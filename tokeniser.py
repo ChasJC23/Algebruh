@@ -16,6 +16,9 @@ class Token(IntEnum):
     SEPARATOR = 10
 
 class Tokeniser:
+    '''
+    class responsible for tokenising a given mathematical expression ready to be parsed.
+    '''
     def __init__(self, stream: StringIO):
         self.currentChar: str = None
         self.currentToken: Token = None

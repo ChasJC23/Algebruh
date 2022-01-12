@@ -1,14 +1,10 @@
-from parser import *
-from tokeniser import Tokeniser
+from nodes import StdContext
+from parser import Parser
 
-def main():
-    tree = Parser.parse("3 ** x / 2 ** x")
-    print(tree)
-    simplified = tree.simplify()
-    while tree != simplified:
-        print(simplified)
-        tree = simplified
-        simplified = tree.simplify()
 
-if __name__ == "__main__":
-    main()
+expression = Parser.parse("3 ** x / 2 ** x")
+
+derivative = expression.differentiate(StdContext(), "x")
+
+print(derivative)
+print(derivative.simplify())

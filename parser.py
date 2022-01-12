@@ -3,6 +3,9 @@ from io import StringIO
 from nodes import *
 
 class Parser:
+    '''
+    class responsible for parsing a given mathematical expression within a tokeniser.
+    '''
     def __init__(self, tokeniser: Tokeniser):
         self.tokeniser = tokeniser
     
@@ -83,6 +86,9 @@ class Parser:
         return expr
     @staticmethod
     def parse(expression: StringIO | str):
+        '''
+        directly parses the given mathematical expression.
+        '''
         if isinstance(expression, str):
             expression = StringIO(expression)
         return Parser(Tokeniser(expression)).parseExpression()

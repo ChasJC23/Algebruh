@@ -7,6 +7,9 @@ from copy import copy
 T = TypeVar('T')
 
 class Context(ABC):
+    '''
+    class encapsulating available functions and variables with known value.
+    '''
     @abstractmethod
     def resolveVariable(self, variable: str) -> complex:
         '''
@@ -20,12 +23,15 @@ class Context(ABC):
         if function == "ln":
             return cmath.log
     @abstractmethod
-    def differentiateFtn(self, function: str) -> Iterable[DerivativeConstructor]:
+    def differentiateFtn(self, function: str) -> Iterable[PartialExpression]:
         '''
         returns the derivative function(s) of the given function.
         '''
 
 class StdContext(Context):
+    '''
+    standard mathematical context.
+    '''
     def __init__(self, **variables: complex):
         self.variables = variables
 
@@ -49,23 +55,26 @@ class StdContext(Context):
             case "cot": return lambda x: 1 / cmath.tan(x)
         raise SyntaxError()
 
-    def differentiateFtn(self, function: str) -> Iterable[DerivativeConstructor]:
+    def differentiateFtn(self, function: str) -> Iterable[PartialExpression]:
         match function:
-            case "sqrt": return (DerivativeConstructor(DivNode(1, MulNode(2, FunctionCallNode("sqrt", PlaceholderNode(0))))),)
-            case "rect": return (DerivativeConstructor(FunctionCallNode("exp", PlaceholderNode(1))), DerivativeConstructor(FunctionCallNode("rect", PlaceholderNode(0), PlaceholderNode(1))))
-            case "exp": return (DerivativeConstructor(FunctionCallNode("exp", PlaceholderNode(0))),)
-            case "ln" | "log": return (DerivativeConstructor(DivNode(LiteralNode(1), PlaceholderNode(0))),)
-            case "sin": return (DerivativeConstructor(FunctionCallNode("cos", PlaceholderNode(0))),)
-            case "cos": return (DerivativeConstructor(NegNode(FunctionCallNode("sin", PlaceholderNode(0)))),)
-            case "tan": return (DerivativeConstructor(MulNode(FunctionCallNode("sec", PlaceholderNode(0)), FunctionCallNode("sec", PlaceholderNode(0)))),)
-            case "sec": return (DerivativeConstructor(MulNode(FunctionCallNode("tan", PlaceholderNode(0)), FunctionCallNode("sec", PlaceholderNode(0)))),)
-            case "csc": return (DerivativeConstructor(NegNode(MulNode(FunctionCallNode("cot", PlaceholderNode(0)), FunctionCallNode("csc", PlaceholderNode(0))))),)
-            case "cot": return (DerivativeConstructor(NegNode(MulNode(FunctionCallNode("csc", PlaceholderNode(0)), FunctionCallNode("csc", PlaceholderNode(0))))),)
-            case "asin": return (DerivativeConstructor(DivNode(FunctionCallNode("sqrt", SubNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0)))))),)
-            case "acos": return (DerivativeConstructor(NegNode(DivNode(FunctionCallNode("sqrt", SubNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0))))))),)
-            case "atan": return (DerivativeConstructor(DivNode(AddNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0))))),)
+            case "sqrt": return (PartialExpression(DivNode(1, MulNode(2, FunctionCallNode("sqrt", PlaceholderNode(0))))),)
+            case "rect": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(1))), PartialExpression(FunctionCallNode("rect", PlaceholderNode(0), PlaceholderNode(1))))
+            case "exp": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(0))),)
+            case "ln" | "log": return (PartialExpression(DivNode(LiteralNode(1), PlaceholderNode(0))),)
+            case "sin": return (PartialExpression(FunctionCallNode("cos", PlaceholderNode(0))),)
+            case "cos": return (PartialExpression(NegNode(FunctionCallNode("sin", PlaceholderNode(0)))),)
+            case "tan": return (PartialExpression(MulNode(FunctionCallNode("sec", PlaceholderNode(0)), FunctionCallNode("sec", PlaceholderNode(0)))),)
+            case "sec": return (PartialExpression(MulNode(FunctionCallNode("tan", PlaceholderNode(0)), FunctionCallNode("sec", PlaceholderNode(0)))),)
+            case "csc": return (PartialExpression(NegNode(MulNode(FunctionCallNode("cot", PlaceholderNode(0)), FunctionCallNode("csc", PlaceholderNode(0))))),)
+            case "cot": return (PartialExpression(NegNode(MulNode(FunctionCallNode("csc", PlaceholderNode(0)), FunctionCallNode("csc", PlaceholderNode(0))))),)
+            case "asin": return (PartialExpression(DivNode(FunctionCallNode("sqrt", SubNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0)))))),)
+            case "acos": return (PartialExpression(NegNode(DivNode(FunctionCallNode("sqrt", SubNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0))))))),)
+            case "atan": return (PartialExpression(DivNode(AddNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0))))),)
 
-class DerivativeConstructor(Callable):
+class PartialExpression(Callable):
+    '''
+    callable class holding an incomplete expression which can be completed when called.
+    '''
     def __init__(self, tree: Node):
         self.tree = tree
 
@@ -86,6 +95,9 @@ class DerivativeConstructor(Callable):
         return self.tree
 
 def walk(tree: Node) -> Generator[Node, None, None]:
+    '''
+    depth-first walk through an expression
+    '''
     match tree:
         case BinaryNode():
             for i in walk(tree.left):
@@ -120,6 +132,9 @@ def sumprod_terms(tree: AddSubNode | MulDivNode) -> Generator[tuple[Node, bool],
         yield tree.right, tree.right_negated
 
 class Node(ABC):
+    '''
+    base node class all expression elements are based on.
+    '''
     @abstractmethod
     def evaluate(self, context: Context) -> complex:
         '''
@@ -144,6 +159,9 @@ class Node(ABC):
         return isinstance(__o, self.__class__)
 
 class PlaceholderNode(Node, Generic[T]):
+    '''
+    element of an expression with an unknown value to be replaced when put into a partial expression.
+    '''
     def __init__(self, _id: T) -> None:
         self.id = _id
 
@@ -154,6 +172,9 @@ class PlaceholderNode(Node, Generic[T]):
         return super().__hash__()
 
 class LiteralNode(Node):
+    '''
+    expression element representing a literal value.
+    '''
     def __init__(self, value: complex):
         self.value = value
 
@@ -176,6 +197,9 @@ class LiteralNode(Node):
         return super().__eq__(__o) and self.value == __o.value
 
 class VariableNode(Node):
+    '''
+    expression element representing an unknown variable in an expression.
+    '''
     def __init__(self, identifier: str):
         self.identifier = identifier
 
@@ -201,6 +225,10 @@ class VariableNode(Node):
         return super().__eq__(__o) and self.identifier == __o.identifier
 
 class FunctionCallNode(Node):
+    '''
+    expression element representing a call to a specific function.
+    The function may be multi-valued.
+    '''
     def __init__(self, identifier: str, *arguments: Node):
         self.identifier = identifier
         self.arguments = list(arguments)
@@ -214,7 +242,7 @@ class FunctionCallNode(Node):
         result: Node = None
         for i in range(len(fprimeconstructors)):
             argDeriv = self.arguments[i].differentiate(context, var)
-            constructor: DerivativeConstructor = fprimeconstructors[i]
+            constructor: PartialExpression = fprimeconstructors[i]
             fprime = constructor(*self.arguments)
             term = MulNode(fprime, argDeriv)
             if result is None: result = term
@@ -240,6 +268,9 @@ class FunctionCallNode(Node):
         return super().__eq__(__o) and self.identifier == __o.identifier and all(self.arguments[i] == __o.arguments[i] for i in range(len(self.arguments)))
 
 class UnaryNode(Node, ABC):
+    '''
+    expression element corresponding to any unary operator.
+    '''
     def __init__(self, op: Callable[[complex], complex], arg: Node):
         self.op = op
         self.arg = arg
@@ -259,6 +290,9 @@ class UnaryNode(Node, ABC):
         return super().__eq__(__o) and self.arg == __o.arg
 
 class PosNode(UnaryNode):
+    '''
+    expression element representing the `+a` prefix unary operator.
+    '''
     def __init__(self, arg: Node):
         op = lambda x: +x
         super().__init__(op, arg)
@@ -277,6 +311,9 @@ class PosNode(UnaryNode):
         return super().__hash__()
 
 class NegNode(UnaryNode):
+    '''
+    expression element representing the `-a` prefix unary operator.
+    '''
     def __init__(self, arg: Node):
         op = lambda x: -x
         super().__init__(op, arg)
@@ -300,6 +337,9 @@ class NegNode(UnaryNode):
         return super().__hash__()
 
 class BinaryNode(Node, ABC):
+    '''
+    expression element corresponding to any binary operator.
+    '''
     def __init__(self, op: Callable[[complex, complex], complex], left: Node, right: Node, negations: int):
         self.op = op
         self.left = left
@@ -328,6 +368,9 @@ class BinaryNode(Node, ABC):
         return super().__eq__(__o) and (self.left == __o.left and self.right == __o.right or self.left == __o.right and self.right == __o.left)
 
 class AddSubNode(BinaryNode, ABC):
+    '''
+    expression element representing either binary addition or subtraction. 
+    '''
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
         if issubclass(callerType, AddSubNode) and isinstance(nc, AddSubNode): return nc
@@ -362,6 +405,9 @@ class AddSubNode(BinaryNode, ABC):
         return self.__class__(self.left.differentiate(context, var), self.right.differentiate(context, var))
 
 def sumFromDict(d: dict[Node, complex], literal: complex = 0):
+    '''
+    returns a sum of all keys in the dictionary, where their coefficient is their linked value in the dictionary.
+    '''
     dc = copy(d)
     expr = LiteralNode(0)
     while expr == LiteralNode(0) and dc != {}:
@@ -380,6 +426,9 @@ def sumFromDict(d: dict[Node, complex], literal: complex = 0):
     return expr
 
 def productFromDict(d: dict[Node, Node], literal: complex = 1):
+    '''
+    returns a product of all keys in the dictionary, where their exponent is their linked value in the dictionary.
+    '''
     if literal == 0: return LiteralNode(0)
     dc = copy(d)
     expr = LiteralNode(1)
@@ -401,6 +450,9 @@ def productFromDict(d: dict[Node, Node], literal: complex = 1):
     return expr
 
 class AddNode(AddSubNode):
+    '''
+    expression element representing the binary addition operator. 
+    '''
     def __init__(self, left: Node, right: Node):
         op = lambda x, y: x + y
         super().__init__(op, left, right, 0b00)
@@ -424,6 +476,9 @@ class AddNode(AddSubNode):
         return f"({self.left} + {self.right})"
 
 class SubNode(AddSubNode):
+    '''
+    expression element representing the binary subtraction operator. 
+    '''
     def __init__(self, left: Node, right: Node):
         op = lambda x, y: x - y
         super().__init__(op, left, right, 0b01)
@@ -444,8 +499,12 @@ class SubNode(AddSubNode):
         return f"({self.left} - {self.right})"
 
 class MulDivNode(BinaryNode, ABC):
+    '''
+    expression element representing either binary multiplication or division. 
+    '''
     def simplify(self, callerType: type = object) -> BinaryNode:
         nc = super().simplify(callerType)
+        return nc
         if issubclass(callerType, MulDivNode) and isinstance(nc, MulDivNode): return nc
         literalAmount = 1 + 0j
         variableAmount: dict[Node, Node] = {}
@@ -458,9 +517,13 @@ class MulDivNode(BinaryNode, ABC):
             elif power in variableAmount.values() and isinstance(term, LiteralNode):
                 index = tuple(variableAmount.values()).index(power)
                 base = tuple(variableAmount.keys())[index]
-                if not isinstance(base, LiteralNode): continue
+                if not isinstance(base, LiteralNode):
+                    literalAmount *= term.value
+                    continue
                 variableAmount.pop(base)
                 variableAmount[LiteralNode(base.value * term.value)] = power
+            elif isinstance(term, LiteralNode) and isinstance(power, LiteralNode):
+                literalAmount *= term.value ** power.value
             else:
                 variableAmount[term] = power
         if variableAmount == {}:
@@ -469,6 +532,9 @@ class MulDivNode(BinaryNode, ABC):
             return productFromDict(variableAmount, literalAmount)
 
 class MulNode(MulDivNode):
+    '''
+    expression element representing the binary multiplication operator. 
+    '''
     def __init__(self, left: Node, right: Node):
         op = lambda x, y: x * y
         super().__init__(op, left, right, 0b00)
@@ -506,6 +572,9 @@ class MulNode(MulDivNode):
         return f"({self.left} * {self.right})"
 
 class DivNode(MulDivNode):
+    '''
+    expression element representing the binary division operator. 
+    '''
     def __init__(self, left: Node, right: Node):
         op = lambda x, y: x / y
         super().__init__(op, left, right, 0b01)
@@ -533,6 +602,9 @@ class DivNode(MulDivNode):
         return f"({self.left} / {self.right})"
 
 class PowNode(BinaryNode):
+    '''
+    expression element representing the binary exponent operator. 
+    '''
     def __init__(self, left: Node, right: Node):
         op = lambda x, y: x ** y
         super().__init__(op, left, right, 0b00)
