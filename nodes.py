@@ -157,6 +157,32 @@ class Node(ABC):
     
     def __eq__(self, __o: object) -> bool:
         return isinstance(__o, self.__class__)
+    
+    def __add__(self, other: Node | complex) -> AddNode:
+        if isinstance(other, Node): return AddNode(self, other)
+        else: return AddNode(self, LiteralNode(other))
+    def __radd__(self, other: complex) -> AddNode:
+        return AddNode(LiteralNode(other), self)
+    def __sub__(self, other: Node | complex) -> SubNode:
+        if isinstance(other, Node): return SubNode(self, other)
+        else: return SubNode(self, LiteralNode(other))
+    def __rsub__(self, other: complex) -> SubNode:
+        return SubNode(LiteralNode(other), self)
+    def __mul__(self, other: Node | complex) -> MulNode:
+        if isinstance(other, Node): return MulNode(self, other)
+        else: return MulNode(self, LiteralNode(other))
+    def __rmul__(self, other: complex) -> MulNode:
+        return MulNode(LiteralNode(other), self)
+    def __truediv__(self, other: Node | complex) -> DivNode:
+        if isinstance(other, Node): return DivNode(self, other)
+        else: return DivNode(self, LiteralNode(other))
+    def __rtruediv__(self, other: complex) -> DivNode:
+        return DivNode(LiteralNode(other), self)
+    def __pow__(self, other: Node | complex) -> PowNode:
+        if isinstance(other, Node): return PowNode(self, other)
+        else: return PowNode(self, LiteralNode(other))
+    def __rpow__(self, other: complex) -> PowNode:
+        return PowNode(LiteralNode(other), self)
 
 class PlaceholderNode(Node, Generic[T]):
     '''
@@ -374,7 +400,7 @@ class AddSubNode(BinaryNode, ABC):
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
         if issubclass(callerType, AddSubNode) and isinstance(nc, AddSubNode): return nc
-        literalAmount = 0j
+        literalAmount = 0
         variableAmount: dict[Node, complex] = {}
         for term, negated in sumprod_terms(nc):
             if isinstance(term, LiteralNode):
@@ -505,31 +531,31 @@ class MulDivNode(BinaryNode, ABC):
     def simplify(self, callerType: type = object) -> BinaryNode:
         nc = super().simplify(callerType)
         return nc
-        if issubclass(callerType, MulDivNode) and isinstance(nc, MulDivNode): return nc
-        literalAmount = 1 + 0j
-        variableAmount: dict[Node, Node] = {}
-        for term, inversed in sumprod_terms(nc):
-            power = LiteralNode(-1) if inversed else LiteralNode(1)
-            if isinstance(term, PowNode):
-                power = NegNode(term.right) if inversed else term.right; term = term.left
-            if term in variableAmount.keys():
-                variableAmount[term] = AddNode(variableAmount[term], power)
-            elif power in variableAmount.values() and isinstance(term, LiteralNode):
-                index = tuple(variableAmount.values()).index(power)
-                base = tuple(variableAmount.keys())[index]
-                if not isinstance(base, LiteralNode):
-                    literalAmount *= term.value
-                    continue
-                variableAmount.pop(base)
-                variableAmount[LiteralNode(base.value * term.value)] = power
-            elif isinstance(term, LiteralNode) and isinstance(power, LiteralNode):
-                literalAmount *= term.value ** power.value
-            else:
-                variableAmount[term] = power
-        if variableAmount == {}:
-            return LiteralNode(literalAmount)
-        else:
-            return productFromDict(variableAmount, literalAmount)
+        # if issubclass(callerType, MulDivNode) and isinstance(nc, MulDivNode): return nc
+        # literalAmount = 1
+        # variableAmount: dict[Node, Node] = {}
+        # for term, inversed in sumprod_terms(nc):
+        #     power = LiteralNode(-1) if inversed else LiteralNode(1)
+        #     if isinstance(term, PowNode):
+        #         power = NegNode(term.right) if inversed else term.right; term = term.left
+        #     if term in variableAmount.keys():
+        #         variableAmount[term] = AddNode(variableAmount[term], power)
+        #     elif power in variableAmount.values() and isinstance(term, LiteralNode):
+        #         index = tuple(variableAmount.values()).index(power)
+        #         base = tuple(variableAmount.keys())[index]
+        #         if not isinstance(base, LiteralNode):
+        #             literalAmount *= term.value
+        #             continue
+        #         variableAmount.pop(base)
+        #         variableAmount[LiteralNode(base.value * term.value)] = power
+        #     elif isinstance(term, LiteralNode) and isinstance(power, LiteralNode):
+        #         literalAmount *= term.value ** power.value
+        #     else:
+        #         variableAmount[term] = power
+        # if variableAmount == {}:
+        #     return LiteralNode(literalAmount)
+        # else:
+        #     return productFromDict(variableAmount, literalAmount)
 
 class MulNode(MulDivNode):
     '''
