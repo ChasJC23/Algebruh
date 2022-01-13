@@ -282,7 +282,7 @@ class FunctionCallNode(Node):
         return nc
 
     def __repr__(self) -> str:
-        return f"Ftn[{self.identifier}]{self.arguments}"
+        return f"Ftn[{self.identifier}]{self.arguments.__repr__()}"
     
     def __str__(self) -> str:
         return self.identifier + (f'({self.arguments[0]})' if len(self.arguments) == 1 else str(self.arguments))
@@ -331,6 +331,9 @@ class PosNode(UnaryNode):
         return nc.arg
 
     def __repr__(self) -> str:
+        return f"(+{self.arg.__repr__()})"
+
+    def __str__(self) -> str:
         return f"(+{self.arg})"
 
     def __hash__(self) -> int:
@@ -357,6 +360,9 @@ class NegNode(UnaryNode):
             return nc
 
     def __repr__(self) -> str:
+        return f"(-{self.arg.__repr__()})"
+
+    def __str__(self) -> str:
         return f"(-{self.arg})"
 
     def __hash__(self) -> int:
@@ -499,6 +505,9 @@ class AddNode(AddSubNode):
             return nc
 
     def __repr__(self) -> str:
+        return f"({self.left.__repr__()} + {self.right.__repr__()})"
+    
+    def __str__(self) -> str:
         return f"({self.left} + {self.right})"
 
 class SubNode(AddSubNode):
@@ -522,6 +531,9 @@ class SubNode(AddSubNode):
             return nc
 
     def __repr__(self) -> str:
+        return f"({self.left.__repr__()} - {self.right.__repr__()})"
+    
+    def __str__(self) -> str:
         return f"({self.left} - {self.right})"
 
 class MulDivNode(BinaryNode, ABC):
@@ -595,6 +607,9 @@ class MulNode(MulDivNode):
             return nc
 
     def __repr__(self) -> str:
+        return f"({self.left.__repr__()} * {self.right.__repr__()})"
+    
+    def __str__(self) -> str:
         return f"({self.left} * {self.right})"
 
 class DivNode(MulDivNode):
@@ -625,6 +640,9 @@ class DivNode(MulDivNode):
             return nc
 
     def __repr__(self) -> str:
+        return f"({self.left.__repr__()} / {self.right.__repr__()})"
+    
+    def __str__(self) -> str:
         return f"({self.left} / {self.right})"
 
 class PowNode(BinaryNode):
@@ -670,4 +688,7 @@ class PowNode(BinaryNode):
             return nc
 
     def __repr__(self) -> str:
+        return f"({self.left.__repr__()} ** {self.right.__repr__()})"
+    
+    def __str__(self) -> str:
         return f"({self.left} ** {self.right})"

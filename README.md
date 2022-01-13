@@ -32,5 +32,5 @@ for i in range(5):
 - [ ] Expression factorisation for polynomials
 - [ ] Use of functional identities for expression simplification
 - [x] Implement operators to allow expressions to be extended through simple arithmetic.
-- [ ] Fix up inconsistencies within `__str__` and `__repr__`
+- [x] Fix up inconsistencies within `__str__` and `__repr__`
 - [ ] Implement derivatives for the remaining functions
