@@ -157,6 +157,12 @@ class Node(ABC):
         returns a new node which includes less redundant operations.
         '''
         return copy(self)
+        
+    def substitute(self: T, var: str, expr: Node) -> T:
+        '''
+        substitutes all instances of a variable with a separate expression.
+        '''
+        return copy(self)
     
     def __hash__(self) -> int:
         return hash(self.__repr__())
@@ -255,6 +261,9 @@ class VariableNode(Node):
     def differentiate(self, context: Context, var: str) -> Node:
         if var == self.identifier: return LiteralNode(1)
         else: return LiteralNode(0)
+    
+    def substitute(self, var: str, expr: Node) -> Node:
+        return expr if self.identifier == var else super().substitute(var, expr)
 
     def __repr__(self) -> str:
         return f"Var({self.identifier})"
@@ -300,6 +309,12 @@ class FunctionCallNode(Node):
         for i, arg in enumerate(nc.arguments):
             nc.arguments[i] = arg.simplify(self.__class__)
         return nc
+    
+    def substitute(self: T, var: str, expr: Node) -> Node:
+        nc = super().substitute(var, expr)
+        for i, arg in enumerate(nc.arguments):
+            nc.arguments[i] = arg.substitute(self.__class__, var, expr)
+        return nc
 
     def __repr__(self) -> str:
         return f"Ftn[{self.identifier}]{self.arguments.__repr__()}"
@@ -327,6 +342,11 @@ class UnaryNode(Node, ABC):
     def simplify(self, callerType: type = object) -> UnaryNode:
         nc = super().simplify(callerType)
         nc.arg = self.arg.simplify(self.__class__)
+        return nc
+    
+    def substitute(self, var: str, expr: Node) -> UnaryNode:
+        nc = super().substitute(var, expr)
+        nc.arg = self.arg.substitute(var, expr)
         return nc
     
     def __hash__(self) -> int:
@@ -411,6 +431,12 @@ class BinaryNode(Node, ABC):
         nc = super().simplify(callerType)
         nc.left = nc.left.simplify(self.__class__)
         nc.right = nc.right.simplify(self.__class__)
+        return nc
+    
+    def substitute(self, var: str, expr: Node) -> BinaryNode:
+        nc = super().substitute(var, expr)
+        nc.left = self.left.substitute(var, expr)
+        nc.right = self.right.substitute(var, expr)
         return nc
     
     def __hash__(self) -> int:
@@ -563,31 +589,6 @@ class MulDivNode(BinaryNode, ABC):
     def simplify(self, callerType: type = object) -> BinaryNode:
         nc = super().simplify(callerType)
         return nc
-        # if issubclass(callerType, MulDivNode) and isinstance(nc, MulDivNode): return nc
-        # literalAmount = 1
-        # variableAmount: dict[Node, Node] = {}
-        # for term, inversed in sumprod_terms(nc):
-        #     power = LiteralNode(-1) if inversed else LiteralNode(1)
-        #     if isinstance(term, PowNode):
-        #         power = NegNode(term.right) if inversed else term.right; term = term.left
-        #     if term in variableAmount.keys():
-        #         variableAmount[term] = AddNode(variableAmount[term], power)
-        #     elif power in variableAmount.values() and isinstance(term, LiteralNode):
-        #         index = tuple(variableAmount.values()).index(power)
-        #         base = tuple(variableAmount.keys())[index]
-        #         if not isinstance(base, LiteralNode):
-        #             literalAmount *= term.value
-        #             continue
-        #         variableAmount.pop(base)
-        #         variableAmount[LiteralNode(base.value * term.value)] = power
-        #     elif isinstance(term, LiteralNode) and isinstance(power, LiteralNode):
-        #         literalAmount *= term.value ** power.value
-        #     else:
-        #         variableAmount[term] = power
-        # if variableAmount == {}:
-        #     return LiteralNode(literalAmount)
-        # else:
-        #     return productFromDict(variableAmount, literalAmount)
 
 class MulNode(MulDivNode):
     '''

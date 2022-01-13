@@ -24,6 +24,13 @@ ratio = expression / derivative
 for i in range(5):
   x = x - ratio.evaluate(StdContext(x=x))
   print(x)
+
+# but what if our variable x respresented something a bit more complicated?
+# well we can substitute it with another expression
+expr_for_x = Parser.parse("sin(t) + t")
+expression = expression.substitute("x", expr_for_x)
+print(expression)
+print(expression.evaluate(StdContext(t=3)))
 ```
 
 ## Improvements to-do:
