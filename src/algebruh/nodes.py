@@ -64,6 +64,7 @@ class StdContext(Context):
             case "rect": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(1))), PartialExpression(FunctionCallNode("rect", PlaceholderNode(0), PlaceholderNode(1))))
             case "exp": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(0))),)
             case "ln" | "log": return (PartialExpression(1 / PlaceholderNode(0)),)
+            case "log10": return (PartialExpression(1 / (PlaceholderNode(0) * FunctionCallNode("log", 10))),)
             case "sin": return (PartialExpression(FunctionCallNode("cos", PlaceholderNode(0))),)
             case "cos": return (PartialExpression(-FunctionCallNode("sin", PlaceholderNode(0))),)
             case "tan": return (PartialExpression(FunctionCallNode("sec", PlaceholderNode(0)) ** 2),)
@@ -79,6 +80,9 @@ class StdContext(Context):
             case "sech": return (PartialExpression(-(FunctionCallNode("tanh", PlaceholderNode(0)) * FunctionCallNode("sech", PlaceholderNode(0)))),)
             case "csch": return (PartialExpression(-(FunctionCallNode("coth", PlaceholderNode(0)) * FunctionCallNode("csch", PlaceholderNode(0)))),)
             case "coth": return (PartialExpression(-FunctionCallNode("csch", PlaceholderNode(0)) ** 2),)
+            case "asinh": return (PartialExpression(1 / FunctionCallNode("sqrt", PlaceholderNode(0) ** 2 + 1)),)
+            case "acosh": return (PartialExpression(1 / FunctionCallNode("sqrt", (PlaceholderNode(0) ** 2 - 1) * (PlaceholderNode(0) ** 2 + 1))),)
+            case "atanh": return (PartialExpression(1 / (1 - PlaceholderNode(0) ** 2)),)
 
 class PartialExpression(Callable):
     '''
