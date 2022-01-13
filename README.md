@@ -41,3 +41,5 @@ print(expression.evaluate(StdContext(t=3)))
 - [x] Implement operators to allow expressions to be extended through simple arithmetic.
 - [x] Fix up inconsistencies within `__str__` and `__repr__`
 - [ ] Implement derivatives for the remaining functions
+- [ ] Upgrade variable substitution to expression substitution
+- [ ] replace partial expression with substitution
