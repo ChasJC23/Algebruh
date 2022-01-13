@@ -53,23 +53,29 @@ class StdContext(Context):
             case "sec": return lambda x: 1 / cmath.cos(x)
             case "csc": return lambda x: 1 / cmath.sin(x)
             case "cot": return lambda x: 1 / cmath.tan(x)
+            case "sech": return lambda x: 1 / cmath.cosh(x)
+            case "csch": return lambda x: 1 / cmath.sinh(x)
+            case "coth": return lambda x: 1 / cmath.tanh(x)
         raise SyntaxError()
 
     def differentiateFtn(self, function: str) -> Iterable[PartialExpression]:
         match function:
-            case "sqrt": return (PartialExpression(DivNode(1, MulNode(2, FunctionCallNode("sqrt", PlaceholderNode(0))))),)
+            case "sqrt": return (PartialExpression(1 / (2 * FunctionCallNode("sqrt", PlaceholderNode(0)))),)
             case "rect": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(1))), PartialExpression(FunctionCallNode("rect", PlaceholderNode(0), PlaceholderNode(1))))
             case "exp": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(0))),)
-            case "ln" | "log": return (PartialExpression(DivNode(LiteralNode(1), PlaceholderNode(0))),)
+            case "ln" | "log": return (PartialExpression(1 / PlaceholderNode(0)),)
             case "sin": return (PartialExpression(FunctionCallNode("cos", PlaceholderNode(0))),)
-            case "cos": return (PartialExpression(NegNode(FunctionCallNode("sin", PlaceholderNode(0)))),)
-            case "tan": return (PartialExpression(MulNode(FunctionCallNode("sec", PlaceholderNode(0)), FunctionCallNode("sec", PlaceholderNode(0)))),)
-            case "sec": return (PartialExpression(MulNode(FunctionCallNode("tan", PlaceholderNode(0)), FunctionCallNode("sec", PlaceholderNode(0)))),)
-            case "csc": return (PartialExpression(NegNode(MulNode(FunctionCallNode("cot", PlaceholderNode(0)), FunctionCallNode("csc", PlaceholderNode(0))))),)
-            case "cot": return (PartialExpression(NegNode(MulNode(FunctionCallNode("csc", PlaceholderNode(0)), FunctionCallNode("csc", PlaceholderNode(0))))),)
-            case "asin": return (PartialExpression(DivNode(FunctionCallNode("sqrt", SubNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0)))))),)
-            case "acos": return (PartialExpression(NegNode(DivNode(FunctionCallNode("sqrt", SubNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0))))))),)
-            case "atan": return (PartialExpression(DivNode(AddNode(LiteralNode(1), MulNode(PlaceholderNode(0), PlaceholderNode(0))))),)
+            case "cos": return (PartialExpression(-FunctionCallNode("sin", PlaceholderNode(0))),)
+            case "tan": return (PartialExpression(FunctionCallNode("sec", PlaceholderNode(0)) ** 2),)
+            case "sec": return (PartialExpression(FunctionCallNode("tan", PlaceholderNode(0)) * FunctionCallNode("sec", PlaceholderNode(0))),)
+            case "csc": return (PartialExpression(-(FunctionCallNode("cot", PlaceholderNode(0)) * FunctionCallNode("csc", PlaceholderNode(0)))),)
+            case "cot": return (PartialExpression(-(FunctionCallNode("csc", PlaceholderNode(0)) * FunctionCallNode("csc", PlaceholderNode(0)))),)
+            case "asin": return (PartialExpression(1 / FunctionCallNode("sqrt", 1 - PlaceholderNode(0) ** 2)),)
+            case "acos": return (PartialExpression(-1 / FunctionCallNode("sqrt", 1 - PlaceholderNode(0) ** 2)),)
+            case "atan": return (PartialExpression(1 / (1 + PlaceholderNode(0) ** 2)),)
+            case "sinh": return (PartialExpression(FunctionCallNode("cosh", PlaceholderNode(0))))
+            case "cosh": return (PartialExpression(FunctionCallNode("sinh", PlaceholderNode(0))))
+            case "tanh": return (PartialExpression(FunctionCallNode("sech", PlaceholderNode(0)) ** 2),)
 
 class PartialExpression(Callable):
     '''
@@ -158,31 +164,45 @@ class Node(ABC):
     def __eq__(self, __o: object) -> bool:
         return isinstance(__o, self.__class__)
     
+    def __pos__(self) -> PosNode:
+        return PosNode(self)
+    def __neg__(self) -> NegNode:
+        return NegNode(self)
     def __add__(self, other: Node | complex) -> AddNode:
         if isinstance(other, Node): return AddNode(self, other)
+        elif isinstance(other, str): return AddNode(self, VariableNode(other))
         else: return AddNode(self, LiteralNode(other))
-    def __radd__(self, other: complex) -> AddNode:
-        return AddNode(LiteralNode(other), self)
+    def __radd__(self, other: str | complex) -> AddNode:
+        if isinstance(other, str): return AddNode(VariableNode(other), self)
+        else: return AddNode(LiteralNode(other), self)
     def __sub__(self, other: Node | complex) -> SubNode:
         if isinstance(other, Node): return SubNode(self, other)
+        elif isinstance(other, str): return SubNode(self, VariableNode(other))
         else: return SubNode(self, LiteralNode(other))
-    def __rsub__(self, other: complex) -> SubNode:
-        return SubNode(LiteralNode(other), self)
+    def __rsub__(self, other: str | complex) -> SubNode:
+        if isinstance(other, str): return SubNode(VariableNode(other), self)
+        else: return SubNode(LiteralNode(other), self)
     def __mul__(self, other: Node | complex) -> MulNode:
         if isinstance(other, Node): return MulNode(self, other)
+        elif isinstance(other, str): return MulNode(self, VariableNode(other))
         else: return MulNode(self, LiteralNode(other))
-    def __rmul__(self, other: complex) -> MulNode:
-        return MulNode(LiteralNode(other), self)
+    def __rmul__(self, other: str | complex) -> MulNode:
+        if isinstance(other, str): return MulNode(VariableNode(other), self)
+        else: return MulNode(LiteralNode(other), self)
     def __truediv__(self, other: Node | complex) -> DivNode:
         if isinstance(other, Node): return DivNode(self, other)
+        elif isinstance(other, str): return DivNode(self, VariableNode(other))
         else: return DivNode(self, LiteralNode(other))
-    def __rtruediv__(self, other: complex) -> DivNode:
-        return DivNode(LiteralNode(other), self)
+    def __rtruediv__(self, other: str | complex) -> DivNode:
+        if isinstance(other, str): return DivNode(VariableNode(other), self)
+        else: return DivNode(LiteralNode(other), self)
     def __pow__(self, other: Node | complex) -> PowNode:
         if isinstance(other, Node): return PowNode(self, other)
+        elif isinstance(other, str): return PowNode(self, VariableNode(other))
         else: return PowNode(self, LiteralNode(other))
-    def __rpow__(self, other: complex) -> PowNode:
-        return PowNode(LiteralNode(other), self)
+    def __rpow__(self, other: str | complex) -> PowNode:
+        if isinstance(other, str): return PowNode(VariableNode(other), self)
+        else: return PowNode(LiteralNode(other), self)
 
 class PlaceholderNode(Node, Generic[T]):
     '''
