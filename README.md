@@ -3,10 +3,12 @@
 System for parsing, simplifying, differentiating, and evaluating mathematical expressions.
 
 ```py
-expression = Parser.parse("3 * x ** 2 - 7 * x + 2")
-assert(expression.evaluate(StdContext(x=2)) == 0)
+from algebruh import expression, StdContext
 
-derivative = expression.differentiate(StdContext(), "x")
+expr = expression("3 * x ** 2 - 7 * x + 2")
+assert(expr.evaluate(StdContext(x=2)) == 0)
+
+derivative = expr.differentiate(StdContext(), "x")
 
 # taking the derivative of an expression uses standard laws of differentiation,
 # so it can produce an expression of an unusual form.
@@ -20,17 +22,17 @@ assert(derivative.evaluate(StdContext(x=1)) == -1)
 # let's try and do some Newton-Raphson to try and find the other solution.
 x = 1
 # we could simplify the ratio, however the algorithm isn't yet smart enough to know how to manipulate fractions.
-ratio = expression / derivative
+ratio = expr / derivative
 for i in range(5):
   x = x - ratio.evaluate(StdContext(x=x))
   print(x)
 
 # but what if our variable x respresented something a bit more complicated?
 # well we can substitute it with another expression
-expr_for_x = Parser.parse("sin(t) + t")
-expression = expression.substitute("x", expr_for_x)
-print(expression)
-print(expression.evaluate(StdContext(t=3)))
+expr_for_x = expression("sin(t) + t")
+expr = expr.substitute("x", expr_for_x)
+print(expr)
+print(expr.evaluate(StdContext(t=3)))
 ```
 
 ## Improvements to-do:
@@ -43,5 +45,6 @@ print(expression.evaluate(StdContext(t=3)))
 - [x] Implement derivatives for the remaining functions
 - [x] Upgrade variable substitution to expression substitution
 - [ ] Allow non-parsed expressions in expression substitution
-- [ ] replace partial expression with substitution
-- [ ] supply multiple different numerical types
+- [ ] Replace partial expression with substitution
+- [ ] Supply multiple different numerical types
+- [ ] Hide node type from user, use `Expression` alias instead(?)

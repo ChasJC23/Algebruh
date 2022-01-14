@@ -1,88 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Generator, Callable, Iterable, TypeVar, Generic
-import cmath
+from typing import Generator, Callable, TypeVar, Generic
 from copy import copy
+from . import *
 
 T = TypeVar('T')
-
-class Context(ABC):
-    '''
-    class encapsulating available functions and variables with known value.
-    '''
-    @abstractmethod
-    def resolveVariable(self, variable: str) -> complex:
-        '''
-        resolves the value of a known identifier within the expression.
-        '''
-
-    def resolveFunction(self, function: str) -> Callable[..., complex]:
-        '''
-        resolves the operation of a known identifier within the expression.
-        '''
-        if function == "ln":
-            return cmath.log
-    @abstractmethod
-    def differentiateFtn(self, function: str) -> Iterable[PartialExpression]:
-        '''
-        returns the derivative function(s) of the given function.
-        '''
-
-class StdContext(Context):
-    '''
-    standard mathematical context.
-    '''
-    def __init__(self, **variables: complex):
-        self.variables = variables
-
-    def resolveVariable(self, variable: str) -> complex:
-        if variable in self.variables.keys():
-            return self.variables[variable]
-        else:
-            raise SyntaxError()
-
-    def resolveFunction(self, function: str) -> Callable[..., complex]:
-        try:
-            resolved = getattr(cmath, function)
-        except:
-            resolved = None
-        if callable(resolved):
-            return resolved
-        match function:
-            case "ln": return cmath.log
-            case "sec": return lambda x: 1 / cmath.cos(x)
-            case "csc": return lambda x: 1 / cmath.sin(x)
-            case "cot": return lambda x: 1 / cmath.tan(x)
-            case "sech": return lambda x: 1 / cmath.cosh(x)
-            case "csch": return lambda x: 1 / cmath.sinh(x)
-            case "coth": return lambda x: 1 / cmath.tanh(x)
-        raise SyntaxError()
-
-    def differentiateFtn(self, function: str) -> Iterable[PartialExpression]:
-        match function:
-            case "sqrt": return (PartialExpression(1 / (2 * FunctionCallNode("sqrt", PlaceholderNode(0)))),)
-            case "rect": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(1))), PartialExpression(FunctionCallNode("rect", PlaceholderNode(0), PlaceholderNode(1))))
-            case "exp": return (PartialExpression(FunctionCallNode("exp", PlaceholderNode(0))),)
-            case "ln" | "log": return (PartialExpression(1 / PlaceholderNode(0)),)
-            case "log10": return (PartialExpression(1 / (PlaceholderNode(0) * FunctionCallNode("log", 10))),)
-            case "sin": return (PartialExpression(FunctionCallNode("cos", PlaceholderNode(0))),)
-            case "cos": return (PartialExpression(-FunctionCallNode("sin", PlaceholderNode(0))),)
-            case "tan": return (PartialExpression(FunctionCallNode("sec", PlaceholderNode(0)) ** 2),)
-            case "sec": return (PartialExpression(FunctionCallNode("tan", PlaceholderNode(0)) * FunctionCallNode("sec", PlaceholderNode(0))),)
-            case "csc": return (PartialExpression(-(FunctionCallNode("cot", PlaceholderNode(0)) * FunctionCallNode("csc", PlaceholderNode(0)))),)
-            case "cot": return (PartialExpression(-FunctionCallNode("csc", PlaceholderNode(0)) ** 2),)
-            case "asin": return (PartialExpression(1 / FunctionCallNode("sqrt", 1 - PlaceholderNode(0) ** 2)),)
-            case "acos": return (PartialExpression(-1 / FunctionCallNode("sqrt", 1 - PlaceholderNode(0) ** 2)),)
-            case "atan": return (PartialExpression(1 / (1 + PlaceholderNode(0) ** 2)),)
-            case "sinh": return (PartialExpression(FunctionCallNode("cosh", PlaceholderNode(0))))
-            case "cosh": return (PartialExpression(FunctionCallNode("sinh", PlaceholderNode(0))))
-            case "tanh": return (PartialExpression(FunctionCallNode("sech", PlaceholderNode(0)) ** 2),)
-            case "sech": return (PartialExpression(-(FunctionCallNode("tanh", PlaceholderNode(0)) * FunctionCallNode("sech", PlaceholderNode(0)))),)
-            case "csch": return (PartialExpression(-(FunctionCallNode("coth", PlaceholderNode(0)) * FunctionCallNode("csch", PlaceholderNode(0)))),)
-            case "coth": return (PartialExpression(-FunctionCallNode("csch", PlaceholderNode(0)) ** 2),)
-            case "asinh": return (PartialExpression(1 / FunctionCallNode("sqrt", PlaceholderNode(0) ** 2 + 1)),)
-            case "acosh": return (PartialExpression(1 / FunctionCallNode("sqrt", (PlaceholderNode(0) ** 2 - 1) * (PlaceholderNode(0) ** 2 + 1))),)
-            case "atanh": return (PartialExpression(1 / (1 - PlaceholderNode(0) ** 2)),)
 
 class PartialExpression(Callable):
     '''
