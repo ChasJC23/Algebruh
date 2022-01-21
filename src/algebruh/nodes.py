@@ -4,7 +4,7 @@ from typing import Generator, Callable, TypeVar, Generic, TYPE_CHECKING
 from copy import copy
 from . import parser
 if TYPE_CHECKING:
-    from . import Context
+    from .context import Context
 
 T = TypeVar('T')
 
@@ -50,12 +50,12 @@ class Node(ABC):
     base node class all expression elements are based on.
     '''
     @abstractmethod
-    def evaluate(self, context: Context) -> complex:
+    def evaluate(self, context: Context = None, **consts: dict[str, complex]) -> complex:
         '''
         returns the value of this node as determined by a specific context.
         '''
     @abstractmethod
-    def differentiate(self, context: Context, var: str) -> Node:
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         '''
         returns a new node representing the node's derivative with respect to a given variable.
         '''
@@ -118,19 +118,6 @@ class Node(ABC):
         if isinstance(other, str): return PowNode(VariableNode(other), self)
         else: return PowNode(LiteralNode(other), self)
 
-class PlaceholderNode(Node, Generic[T]):
-    '''
-    element of an expression with an unknown value to be replaced when put into a partial expression.
-    '''
-    def __init__(self, _id: T) -> None:
-        self.id = _id
-
-    def __eq__(self, __o: PlaceholderNode) -> bool:
-        return super().__eq__(__o) and self.id == __o.id
-    
-    def __hash__(self) -> int:
-        return super().__hash__()
-
 class LiteralNode(Node):
     '''
     expression element representing a literal value.
@@ -138,10 +125,10 @@ class LiteralNode(Node):
     def __init__(self, value: complex):
         self.value = value
 
-    def evaluate(self, context: Context) -> complex:
+    def evaluate(self, context: Context = None, **consts: dict[str, complex]) -> complex:
         return self.value
 
-    def differentiate(self, context: Context, var: str) -> Node:
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         return LiteralNode(0)
 
     def __repr__(self) -> str:
@@ -163,10 +150,13 @@ class VariableNode(Node):
     def __init__(self, identifier: str):
         self.identifier = identifier
 
-    def evaluate(self, context: Context) -> complex:
+    def evaluate(self, context: Context = None, **consts: dict[str, complex]) -> complex:
+        if context is None:
+            from .context import StdContext
+            context = StdContext(**consts)
         return context.resolveVariable(self.identifier)
 
-    def differentiate(self, context: Context, var: str) -> Node:
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         if var == self.identifier: return LiteralNode(1)
         else: return LiteralNode(0)
     
@@ -198,15 +188,21 @@ class FunctionCallNode(Node):
         self.identifier = identifier
         self.arguments = list(arguments)
 
-    def evaluate(self, context: Context) -> complex:
+    def evaluate(self, context: Context = None, **consts: dict[str, complex]) -> complex:
+        if context is None:
+            from .context import StdContext
+            context = StdContext(**consts)
         return context.resolveFunction(self.identifier)(*(arg.evaluate(context) for arg in self.arguments))
 
-    def differentiate(self, context: Context, var: str) -> Node:
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
+        if context is None:
+            from .context import StdContext
+            context = StdContext(**consts)
         fprimes = context.differentiateFtn(self.identifier, *self.arguments)
         # fprimenode = FunctionCallNode(fprimeftn, *self.arguments)
         result: Node = None
         for i in range(len(fprimes)):
-            argDeriv = self.arguments[i].differentiate(context, var)
+            argDeriv = self.arguments[i].differentiate(var, context)
             fprime = fprimes[i]
             term = MulNode(fprime, argDeriv)
             if result is None: result = term
@@ -248,8 +244,8 @@ class UnaryNode(Node, ABC):
         self.op = op
         self.arg = arg
 
-    def evaluate(self, context: Context) -> complex:
-        return self.op(self.arg.evaluate(context))
+    def evaluate(self, context: Context = None, **consts: dict[str, complex]) -> complex:
+        return self.op(self.arg.evaluate(context, **consts))
 
     def simplify(self, callerType: type = object) -> UnaryNode:
         nc = super().simplify(callerType)
@@ -278,8 +274,8 @@ class PosNode(UnaryNode):
         op = lambda x: +x
         super().__init__(op, arg)
 
-    def differentiate(self, context: Context, var: str) -> Node:
-        return self.arg.differentiate(context, var)
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
+        return self.arg.differentiate(var, context, **consts)
 
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
@@ -302,8 +298,8 @@ class NegNode(UnaryNode):
         op = lambda x: -x
         super().__init__(op, arg)
 
-    def differentiate(self, context: Context, var: str) -> Node:
-        return NegNode(self.arg.differentiate(context, var))
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
+        return NegNode(self.arg.differentiate(var, context, **consts))
 
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
@@ -339,8 +335,8 @@ class BinaryNode(Node, ABC):
     def right_negated(self) -> bool:
         return bool(self.negations & 0b01)
 
-    def evaluate(self, context: Context) -> complex:
-        return self.op(self.left.evaluate(context), self.right.evaluate(context))
+    def evaluate(self, context: Context = None, **consts: dict[str, complex]) -> complex:
+        return self.op(self.left.evaluate(context, **consts), self.right.evaluate(context, **consts))
 
     def simplify(self: T, callerType: type = object) -> T:
         nc = super().simplify(callerType)
@@ -397,8 +393,8 @@ class AddSubNode(BinaryNode, ABC):
         else:
             return sumFromDict(variableAmount, literalAmount)
 
-    def differentiate(self, context: Context, var: str):
-        return self.__class__(self.left.differentiate(context, var), self.right.differentiate(context, var))
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
+        return self.__class__(self.left.differentiate(var, context, **consts), self.right.differentiate(var, context, **consts))
 
 def sumFromDict(d: dict[Node, complex], literal: complex = 0):
     '''
@@ -516,11 +512,11 @@ class MulNode(MulDivNode):
         op = lambda x, y: x * y
         super().__init__(op, left, right, 0b00)
 
-    def differentiate(self, context: Context, var: str) -> Node:
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         # product rule
         return AddNode(
-            MulNode(self.left, self.right.differentiate(context, var)),
-            MulNode(self.left.differentiate(context, var), self.right)
+            MulNode(self.left, self.right.differentiate(var, context, **consts)),
+            MulNode(self.left.differentiate(var, context, **consts), self.right)
         )
 
     def simplify(self, callerType: type = object) -> Node:
@@ -559,12 +555,12 @@ class DivNode(MulDivNode):
         op = lambda x, y: x / y
         super().__init__(op, left, right, 0b01)
 
-    def differentiate(self, context: Context, var: str) -> Node:
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         # quotient rule
         return DivNode(
             SubNode(
-                MulNode(self.left.differentiate(context, var), self.right),
-                MulNode(self.left, self.right.differentiate(context, var))
+                MulNode(self.left.differentiate(var, context, **consts), self.right),
+                MulNode(self.left, self.right.differentiate(var, context, **consts))
             ),
             MulNode(self.right, self.right)
         )
@@ -592,19 +588,19 @@ class PowNode(BinaryNode):
         op = lambda x, y: x ** y
         super().__init__(op, left, right, 0b00)
 
-    def differentiate(self, context: Context, var: str) -> Node:
+    def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         # oh god, exponents are so much worse than you think
         return MulNode(
             PowNode(self.left, SubNode(self.right, LiteralNode(1))),
             AddNode(
                 # NOTE: I have no idea how commutativity plays into this, I'm just trusting Wolfram Alpha :)
-                MulNode(self.right, self.left.differentiate(context, var)),
+                MulNode(self.right, self.left.differentiate(var, context, **consts)),
                 MulNode(
                     MulNode(
                         self.left,
                         FunctionCallNode("ln", self.left)
                     ),
-                    self.right.differentiate(context, var)
+                    self.right.differentiate(var, context, **consts)
                 )
             )
         )
