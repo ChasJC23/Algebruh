@@ -6,7 +6,7 @@ System for parsing, simplifying, differentiating, and evaluating mathematical ex
 from algebruh import expression
 
 expr = expression("3 * x ** 2 - 7 * x + 2")
-assert(expr.evaluate(x=2) == 0)
+assert expr.evaluate(x=2) == 0
 
 derivative = expr.differentiate("x")
 
@@ -17,7 +17,7 @@ print(derivative)
 derivative = derivative.simplify()
 print(derivative)
 
-assert(derivative.evaluate(x=1) == -1)
+assert derivative.evaluate(x=1) == -1
 
 # let's try and do some Newton-Raphson to try and find the other solution.
 x = 1

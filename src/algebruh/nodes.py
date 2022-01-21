@@ -199,7 +199,6 @@ class FunctionCallNode(Node):
             from .context import StdContext
             context = StdContext(**consts)
         fprimes = context.differentiateFtn(self.identifier, *self.arguments)
-        # fprimenode = FunctionCallNode(fprimeftn, *self.arguments)
         result: Node = None
         for i in range(len(fprimes)):
             argDeriv = self.arguments[i].differentiate(var, context)
