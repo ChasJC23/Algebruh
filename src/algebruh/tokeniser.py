@@ -76,7 +76,7 @@ class Tokeniser:
                 seenRadix |= self.currentChar == '.'
                 litDigits += self.currentChar
                 self.nextChar()
-            self.litValue = complex(litDigits)
+            self.litValue = float(litDigits) if seenRadix else int(litDigits)
             if self.currentChar == 'j':
                 self.nextChar()
                 self.litValue *= 1j

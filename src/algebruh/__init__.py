@@ -3,7 +3,6 @@ import cmath
 from typing import TypeAlias, Callable, Iterable
 from . import parser, nodes
 
-
 Expression: TypeAlias = "nodes.Node"
 '''
 Some arbitrary mathematical expression
