@@ -29,8 +29,7 @@ for i in range(5):
 
 # but what if our variable x respresented something a bit more complicated?
 # well we can substitute it with another expression
-expr_for_x = expression("sin(t) + t")
-expr = expr.substitute("x", expr_for_x)
+expr = expr.substitute("x", "sin(t) + t")
 print(expr)
 print(expr.evaluate(StdContext(t=3)))
 ```
@@ -44,7 +43,7 @@ print(expr.evaluate(StdContext(t=3)))
 - [x] Fix up inconsistencies within `__str__` and `__repr__`
 - [x] Implement derivatives for the remaining functions
 - [x] Upgrade variable substitution to expression substitution
-- [ ] Allow non-parsed expressions in expression substitution
+- [x] Allow non-parsed expressions in expression substitution
 - [ ] Replace partial expression with substitution
 - [ ] Supply multiple different numerical types
 - [ ] Hide node type from user, use `Expression` alias instead(?)

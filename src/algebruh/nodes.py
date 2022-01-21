@@ -1,8 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Generator, Callable, TypeVar, Generic
+from typing import Generator, Callable, TypeVar, Generic, TYPE_CHECKING
 from copy import copy
-from . import *
+from . import parser
+if TYPE_CHECKING:
+    from . import Context
 
 T = TypeVar('T')
 
@@ -87,7 +89,7 @@ class Node(ABC):
         '''
         return copy(self)
         
-    def substitute(self: T, var: str | Node, expr: Node) -> T:
+    def substitute(self: T, var: str | Node, expr: str | Node) -> T:
         '''
         substitutes all instances of a variable or expression with a new expression.
         '''
@@ -191,8 +193,10 @@ class VariableNode(Node):
         if var == self.identifier: return LiteralNode(1)
         else: return LiteralNode(0)
     
-    def substitute(self, var: str | Node, expr: Node) -> Node:
-        return expr if isinstance(var, str) and self.identifier == var or self == var else super().substitute(var, expr)
+    def substitute(self, var: str | Node, expr: str | Node) -> Node:
+        if isinstance(var, str): var = parser.Parser.parse(var)
+        if isinstance(expr, str): expr = parser.Parser.parse(expr)
+        return expr if self == var else super().substitute(var, expr)
 
     def __repr__(self) -> str:
         return f"Var({self.identifier})"
@@ -239,8 +243,10 @@ class FunctionCallNode(Node):
             nc.arguments[i] = arg.simplify(self.__class__)
         return nc
     
-    def substitute(self, var: str | Node, expr: Node) -> Node:
-        if isinstance(var, Node) and self == var: return expr
+    def substitute(self, var: str | Node, expr: str | Node) -> Node:
+        if isinstance(var, str): var = parser.Parser.parse(var)
+        if isinstance(expr, str): expr = parser.Parser.parse(expr)
+        if self == var: return expr
         nc = super().substitute(var, expr)
         for i, arg in enumerate(nc.arguments):
             nc.arguments[i] = arg.substitute(self.__class__, var, expr)
@@ -274,8 +280,10 @@ class UnaryNode(Node, ABC):
         nc.arg = self.arg.simplify(self.__class__)
         return nc
     
-    def substitute(self, var: str | Node, expr: Node) -> UnaryNode:
-        if isinstance(var, Node) and self == var: return expr
+    def substitute(self, var: str | Node, expr: str | Node) -> Node:
+        if isinstance(var, str): var = parser.Parser.parse(var)
+        if isinstance(expr, str): expr = parser.Parser.parse(expr)
+        if self == var: return expr
         nc = super().substitute(var, expr)
         nc.arg = self.arg.substitute(var, expr)
         return nc
@@ -364,8 +372,10 @@ class BinaryNode(Node, ABC):
         nc.right = nc.right.simplify(self.__class__)
         return nc
     
-    def substitute(self, var: str | Node, expr: Node) -> BinaryNode:
-        if isinstance(var, Node) and self == var: return expr
+    def substitute(self, var: str | Node, expr: str | Node) -> Node:
+        if isinstance(var, str): var = parser.Parser.parse(var)
+        if isinstance(expr, str): expr = parser.Parser.parse(expr)
+        if self == var: return expr
         nc = super().substitute(var, expr)
         nc.left = self.left.substitute(var, expr)
         nc.right = self.right.substitute(var, expr)

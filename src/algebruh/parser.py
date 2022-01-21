@@ -1,5 +1,5 @@
 from io import StringIO
-from .tokeniser import Token, Tokeniser
+from .tokeniser import Tokeniser, Token
 from .nodes import *
 
 class Parser:

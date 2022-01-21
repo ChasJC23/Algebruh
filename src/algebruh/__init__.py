@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import cmath
-from typing import Callable, Iterable, TypeAlias
-from . import parser
-from . import nodes
+from typing import TypeAlias, Callable, Iterable
+from . import parser, nodes
+
 
 Expression: TypeAlias = "nodes.Node"
 '''
