@@ -8,29 +8,6 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-class PartialExpression(Callable):
-    '''
-    callable class holding an incomplete expression which can be completed when called.
-    '''
-    def __init__(self, tree: Node):
-        self.tree = tree
-
-    def __call__(self, *args: Node) -> Node:
-        for node in walk(self.tree):
-            if isinstance(node, BinaryNode):
-                if isinstance(node.left, PlaceholderNode):
-                    node.left = args[node.left.id]
-                if isinstance(node.right, PlaceholderNode):
-                    node.right = args[node.right.id]
-            if isinstance(node, UnaryNode):
-                if isinstance(node.arg, PlaceholderNode):
-                    node.arg = args[node.arg.id]
-            if isinstance(node, FunctionCallNode):
-                for i, arg in enumerate(node.arguments):
-                    if isinstance(arg, PlaceholderNode):
-                        node.arguments[i] = args[arg.id]
-        return self.tree
-
 def walk(tree: Node) -> Generator[Node, None, None]:
     '''
     depth-first walk through an expression
@@ -225,13 +202,12 @@ class FunctionCallNode(Node):
         return context.resolveFunction(self.identifier)(*(arg.evaluate(context) for arg in self.arguments))
 
     def differentiate(self, context: Context, var: str) -> Node:
-        fprimeconstructors = context.differentiateFtn(self.identifier)
+        fprimes = context.differentiateFtn(self.identifier, *self.arguments)
         # fprimenode = FunctionCallNode(fprimeftn, *self.arguments)
         result: Node = None
-        for i in range(len(fprimeconstructors)):
+        for i in range(len(fprimes)):
             argDeriv = self.arguments[i].differentiate(context, var)
-            constructor: PartialExpression = fprimeconstructors[i]
-            fprime = constructor(*self.arguments)
+            fprime = fprimes[i]
             term = MulNode(fprime, argDeriv)
             if result is None: result = term
             else: result = AddNode(result, term)

@@ -26,7 +26,7 @@ class Context(ABC):
         if function == "ln":
             return cmath.log
     @abstractmethod
-    def differentiateFtn(self, function: str) -> Iterable[nodes.PartialExpression]:
+    def differentiateFtn(self, function: str, *args: nodes.Node) -> Iterable[nodes.Node]:
         '''
         returns the derivative function(s) of the given function.
         '''
@@ -61,31 +61,31 @@ class StdContext(Context):
             case "coth": return lambda x: 1 / cmath.tanh(x)
         raise SyntaxError()
 
-    def differentiateFtn(self, function: str) -> Iterable[nodes.PartialExpression]:
+    def differentiateFtn(self, function: str, *args: nodes.Node) -> Iterable[nodes.Node]:
         match function:
-            case "sqrt": return (nodes.PartialExpression(1 / (2 * nodes.FunctionCallNode("sqrt", nodes.PlaceholderNode(0)))),)
-            case "rect": return (nodes.PartialExpression(nodes.FunctionCallNode("exp", nodes.PlaceholderNode(1))), nodes.PartialExpression(nodes.FunctionCallNode("rect", nodes.PlaceholderNode(0), nodes.PlaceholderNode(1))))
-            case "exp": return (nodes.PartialExpression(nodes.FunctionCallNode("exp", nodes.PlaceholderNode(0))),)
-            case "ln" | "log": return (nodes.PartialExpression(1 / nodes.PlaceholderNode(0)),)
-            case "log10": return (nodes.PartialExpression(1 / (nodes.PlaceholderNode(0) * nodes.FunctionCallNode("log", 10))),)
-            case "sin": return (nodes.PartialExpression(nodes.FunctionCallNode("cos", nodes.PlaceholderNode(0))),)
-            case "cos": return (nodes.PartialExpression(-nodes.FunctionCallNode("sin", nodes.PlaceholderNode(0))),)
-            case "tan": return (nodes.PartialExpression(nodes.FunctionCallNode("sec", nodes.PlaceholderNode(0)) ** 2),)
-            case "sec": return (nodes.PartialExpression(nodes.FunctionCallNode("tan", nodes.PlaceholderNode(0)) * nodes.FunctionCallNode("sec", nodes.PlaceholderNode(0))),)
-            case "csc": return (nodes.PartialExpression(-(nodes.FunctionCallNode("cot", nodes.PlaceholderNode(0)) * nodes.FunctionCallNode("csc", nodes.PlaceholderNode(0)))),)
-            case "cot": return (nodes.PartialExpression(-nodes.FunctionCallNode("csc", nodes.PlaceholderNode(0)) ** 2),)
-            case "asin": return (nodes.PartialExpression(1 / nodes.FunctionCallNode("sqrt", 1 - nodes.PlaceholderNode(0) ** 2)),)
-            case "acos": return (nodes.PartialExpression(-1 / nodes.FunctionCallNode("sqrt", 1 - nodes.PlaceholderNode(0) ** 2)),)
-            case "atan": return (nodes.PartialExpression(1 / (1 + nodes.PlaceholderNode(0) ** 2)),)
-            case "sinh": return (nodes.PartialExpression(nodes.FunctionCallNode("cosh", nodes.PlaceholderNode(0))))
-            case "cosh": return (nodes.PartialExpression(nodes.FunctionCallNode("sinh", nodes.PlaceholderNode(0))))
-            case "tanh": return (nodes.PartialExpression(nodes.FunctionCallNode("sech", nodes.PlaceholderNode(0)) ** 2),)
-            case "sech": return (nodes.PartialExpression(-(nodes.FunctionCallNode("tanh", nodes.PlaceholderNode(0)) * nodes.FunctionCallNode("sech", nodes.PlaceholderNode(0)))),)
-            case "csch": return (nodes.PartialExpression(-(nodes.FunctionCallNode("coth", nodes.PlaceholderNode(0)) * nodes.FunctionCallNode("csch", nodes.PlaceholderNode(0)))),)
-            case "coth": return (nodes.PartialExpression(-nodes.FunctionCallNode("csch", nodes.PlaceholderNode(0)) ** 2),)
-            case "asinh": return (nodes.PartialExpression(1 / nodes.FunctionCallNode("sqrt", nodes.PlaceholderNode(0) ** 2 + 1)),)
-            case "acosh": return (nodes.PartialExpression(1 / nodes.FunctionCallNode("sqrt", (nodes.PlaceholderNode(0) ** 2 - 1) * (nodes.PlaceholderNode(0) ** 2 + 1))),)
-            case "atanh": return (nodes.PartialExpression(1 / (1 - nodes.PlaceholderNode(0) ** 2)),)
+            case "sqrt": return (1 / (2 * nodes.FunctionCallNode("sqrt", args[0])),)
+            case "rect": return (nodes.FunctionCallNode("exp", args[1]), nodes.FunctionCallNode("rect", args[0], args[1]))
+            case "exp": return (nodes.FunctionCallNode("exp", args[0]),)
+            case "ln" | "log": return (1 / args[0],)
+            case "log10": return (1 / (args[0] * nodes.FunctionCallNode("log", 10)),)
+            case "sin": return (nodes.FunctionCallNode("cos", args[0]),)
+            case "cos": return (-nodes.FunctionCallNode("sin", args[0]),)
+            case "tan": return (nodes.FunctionCallNode("sec", args[0]) ** 2,)
+            case "sec": return (nodes.FunctionCallNode("tan", args[0]) * nodes.FunctionCallNode("sec", args[0]),)
+            case "csc": return (-(nodes.FunctionCallNode("cot", args[0]) * nodes.FunctionCallNode("csc", args[0])),)
+            case "cot": return (-nodes.FunctionCallNode("csc", args[0]) ** 2,)
+            case "asin": return (1 / nodes.FunctionCallNode("sqrt", 1 - args[0] ** 2),)
+            case "acos": return (-1 / nodes.FunctionCallNode("sqrt", 1 - args[0] ** 2),)
+            case "atan": return (1 / (1 + args[0] ** 2),)
+            case "sinh": return (nodes.FunctionCallNode("cosh", args[0]))
+            case "cosh": return (nodes.FunctionCallNode("sinh", args[0]))
+            case "tanh": return (nodes.FunctionCallNode("sech", args[0]) ** 2,)
+            case "sech": return (-(nodes.FunctionCallNode("tanh", args[0]) * nodes.FunctionCallNode("sech", args[0])),)
+            case "csch": return (-(nodes.FunctionCallNode("coth", args[0]) * nodes.FunctionCallNode("csch", args[0])),)
+            case "coth": return (-nodes.FunctionCallNode("csch", args[0]) ** 2,)
+            case "asinh": return (1 / nodes.FunctionCallNode("sqrt", args[0] ** 2 + 1),)
+            case "acosh": return (1 / nodes.FunctionCallNode("sqrt", (args[0] ** 2 - 1) * (args[0] ** 2 + 1)),)
+            case "atanh": return (1 / (1 - args[0] ** 2),)
 
 def expression(expr: str) -> Expression:
     return parser.Parser.parse(expr)

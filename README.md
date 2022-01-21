@@ -44,6 +44,6 @@ print(expr.evaluate(StdContext(t=3)))
 - [x] Implement derivatives for the remaining functions
 - [x] Upgrade variable substitution to expression substitution
 - [x] Allow non-parsed expressions in expression substitution
-- [ ] Replace partial expression with substitution
+- [x] Replace partial expression with substitution
 - [ ] Supply multiple different numerical types
 - [ ] Hide node type from user, use `Expression` alias instead(?)
