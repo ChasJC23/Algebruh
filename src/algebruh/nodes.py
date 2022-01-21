@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Generator, Callable, TypeVar, Generic, TYPE_CHECKING
+from typing import Generator, Callable, TypeVar, TYPE_CHECKING
 from copy import copy
 from . import parser
 if TYPE_CHECKING:
@@ -282,10 +282,10 @@ class PosNode(UnaryNode):
         return nc.arg
 
     def __repr__(self) -> str:
-        return f"(+{self.arg.__repr__()})"
+        return f"+{self.arg.__repr__()}"
 
     def __str__(self) -> str:
-        return f"(+{self.arg})"
+        return f"+{self.arg}"
 
     def __hash__(self) -> int:
         return super().__hash__()
@@ -311,10 +311,10 @@ class NegNode(UnaryNode):
             return nc
 
     def __repr__(self) -> str:
-        return f"(-{self.arg.__repr__()})"
+        return f"-{self.arg.__repr__()}"
 
     def __str__(self) -> str:
-        return f"(-{self.arg})"
+        return f"-{self.arg}"
 
     def __hash__(self) -> int:
         return super().__hash__()
@@ -468,7 +468,11 @@ class AddNode(AddSubNode):
         return f"({self.left.__repr__()} + {self.right.__repr__()})"
     
     def __str__(self) -> str:
-        return f"({self.left} + {self.right})"
+        if isinstance(self.left, AddSubNode | MulDivNode | PowNode): l = str(self.left)[:-1]
+        else: l = f"({self.left}"
+        if isinstance(self.right, AddSubNode | MulDivNode | PowNode): r = str(self.right)[1:]
+        else: r = f"{self.right})"
+        return f"{l} + {r}"
 
 class SubNode(AddSubNode):
     '''
@@ -494,7 +498,11 @@ class SubNode(AddSubNode):
         return f"({self.left.__repr__()} - {self.right.__repr__()})"
     
     def __str__(self) -> str:
-        return f"({self.left} - {self.right})"
+        if isinstance(self.left, AddSubNode | MulDivNode | PowNode): l = str(self.left)[:-1]
+        else: l = f"({self.left}"
+        if isinstance(self.right, MulDivNode | PowNode): r = str(self.right)[1:]
+        else: r = f"{self.right})"
+        return f"{l} - {r}"
 
 class MulDivNode(BinaryNode, ABC):
     '''
@@ -545,7 +553,11 @@ class MulNode(MulDivNode):
         return f"({self.left.__repr__()} * {self.right.__repr__()})"
     
     def __str__(self) -> str:
-        return f"({self.left} * {self.right})"
+        if isinstance(self.left, MulDivNode | PowNode): l = str(self.left)[:-1]
+        else: l = f"({self.left}"
+        if isinstance(self.right, MulDivNode | PowNode): r = str(self.right)[1:]
+        else: r = f"{self.right})"
+        return f"{l} * {r}"
 
 class DivNode(MulDivNode):
     '''
@@ -578,7 +590,11 @@ class DivNode(MulDivNode):
         return f"({self.left.__repr__()} / {self.right.__repr__()})"
     
     def __str__(self) -> str:
-        return f"({self.left} / {self.right})"
+        if isinstance(self.left, MulDivNode | PowNode): l = str(self.left)[:-1]
+        else: l = f"({self.left}"
+        if isinstance(self.right, PowNode): r = str(self.right)[1:]
+        else: r = f"{self.right})"
+        return f"{l} / {r}"
 
 class PowNode(BinaryNode):
     '''
