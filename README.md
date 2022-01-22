@@ -33,17 +33,3 @@ expr = expr.substitute("x", "sin(t) + t")
 print(expr)
 print(expr.evaluate(t=3))
 ```
-
-## Improvements to-do:
-
-- [ ] Design algorithm for product simplification
-- [ ] Expression factorisation for polynomials
-- [ ] Use of functional identities for expression simplification
-- [x] Implement operators to allow expressions to be extended through simple arithmetic.
-- [x] Fix up inconsistencies within `__str__` and `__repr__`
-- [x] Implement derivatives for the remaining functions
-- [x] Upgrade variable substitution to expression substitution
-- [x] Allow non-parsed expressions in expression substitution
-- [x] Replace partial expression with substitution
-- [ ] Supply multiple different numerical types
-- [ ] Hide node type from user, use `Expression` alias instead(?)

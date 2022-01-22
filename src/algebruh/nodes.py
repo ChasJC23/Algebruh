@@ -45,6 +45,51 @@ def sumprod_terms(tree: AddSubNode | MulDivNode) -> Generator[tuple[Node, bool],
     else:
         yield tree.right, tree.right_negated
 
+def sumFromDict(d: dict[Node, complex], literal: complex = 0):
+    '''
+    returns a sum of all keys in the dictionary, where their coefficient is their linked value in the dictionary.
+    '''
+    dc = copy(d)
+    expr = LiteralNode(0)
+    while expr == LiteralNode(0) and dc != {}:
+        key, value = dc.popitem()
+        expr = MulNode(LiteralNode(value), key).simplify()
+    if dc != {}:
+        for key, value in dc.items():
+            term = MulNode(LiteralNode(value), key).simplify()
+            if term != LiteralNode(0):
+                expr = AddNode(expr, term)
+    if literal != 0:
+        if isinstance(expr, LiteralNode):
+            expr.value += literal
+        else:
+            expr = AddNode(expr, LiteralNode(literal))
+    return expr
+
+def productFromDict(d: dict[Node, Node], literal: complex = 1):
+    '''
+    returns a product of all keys in the dictionary, where their exponent is their linked value in the dictionary.
+    '''
+    if literal == 0: return LiteralNode(0)
+    dc = copy(d)
+    expr = LiteralNode(1)
+    while expr == LiteralNode(1) and dc != {}:
+        key, value = dc.popitem()
+        expr = PowNode(key, value).simplify()
+    if dc != {}:
+        for key, value in dc.items():
+            term = PowNode(key, value).simplify()
+            if isinstance(term, LiteralNode):
+                literal *= term.value
+            else:
+                expr = MulNode(expr, term)
+    if literal != 1:
+        if isinstance(expr, LiteralNode):
+            expr.value *= literal
+        else:
+            expr = MulNode(LiteralNode(literal), expr)
+    return expr
+
 class Node(ABC):
     '''
     base node class all expression elements are based on.
@@ -395,51 +440,6 @@ class AddSubNode(BinaryNode, ABC):
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         return self.__class__(self.left.differentiate(var, context, **consts), self.right.differentiate(var, context, **consts))
 
-def sumFromDict(d: dict[Node, complex], literal: complex = 0):
-    '''
-    returns a sum of all keys in the dictionary, where their coefficient is their linked value in the dictionary.
-    '''
-    dc = copy(d)
-    expr = LiteralNode(0)
-    while expr == LiteralNode(0) and dc != {}:
-        key, value = dc.popitem()
-        expr = MulNode(LiteralNode(value), key).simplify()
-    if dc != {}:
-        for key, value in dc.items():
-            term = MulNode(LiteralNode(value), key).simplify()
-            if term != LiteralNode(0):
-                expr = AddNode(expr, term)
-    if literal != 0:
-        if isinstance(expr, LiteralNode):
-            expr.value += literal
-        else:
-            expr = AddNode(expr, LiteralNode(literal))
-    return expr
-
-def productFromDict(d: dict[Node, Node], literal: complex = 1):
-    '''
-    returns a product of all keys in the dictionary, where their exponent is their linked value in the dictionary.
-    '''
-    if literal == 0: return LiteralNode(0)
-    dc = copy(d)
-    expr = LiteralNode(1)
-    while expr == LiteralNode(1) and dc != {}:
-        key, value = dc.popitem()
-        expr = PowNode(key, value).simplify()
-    if dc != {}:
-        for key, value in dc.items():
-            term = PowNode(key, value).simplify()
-            if isinstance(term, LiteralNode):
-                literal *= term.value
-            else:
-                expr = MulNode(expr, term)
-    if literal != 1:
-        if isinstance(expr, LiteralNode):
-            expr.value *= literal
-        else:
-            expr = MulNode(LiteralNode(literal), expr)
-    return expr
-
 class AddNode(AddSubNode):
     '''
     expression element representing the binary addition operator. 
@@ -509,7 +509,24 @@ class MulDivNode(BinaryNode, ABC):
     '''
     def simplify(self, callerType: type = object) -> BinaryNode:
         nc = super().simplify(callerType)
-        return nc
+        if issubclass(callerType, MulDivNode) and isinstance(nc, MulDivNode): return nc
+        literalAmount = 1
+        variableAmount: dict[Node, Node] = {}
+        for term, inversed in sumprod_terms(nc):
+            if isinstance(term, LiteralNode):
+                literalAmount *= 1/term.value if inversed else term.value
+                continue
+            power = LiteralNode(1)
+            if isinstance(term, PowNode):
+                term, power = term.left, term.right
+            if term in variableAmount.keys():
+                variableAmount[term] += -power if inversed else power
+            else:
+                variableAmount[term] = -power if inversed else power
+        if variableAmount == {}:
+            return LiteralNode(literalAmount)
+        else:
+            return productFromDict(variableAmount, literalAmount)
 
 class MulNode(MulDivNode):
     '''
