@@ -117,6 +117,12 @@ class Node(ABC):
         '''
         return copy(self)
     
+    def expand(self: T) -> T:
+        '''
+        makes use of the distrubitive law to expand expressions into a more manipulatable form.
+        '''
+        return copy(self)
+    
     def __hash__(self) -> int:
         return hash(self.__repr__())
     
@@ -127,40 +133,44 @@ class Node(ABC):
         return PosNode(self)
     def __neg__(self) -> NegNode:
         return NegNode(self)
-    def __add__(self, other: Node | complex) -> AddNode:
+    def __add__(self, other: Node | str | complex | None) -> Node:
+        if other is None: return self
         if isinstance(other, Node): return AddNode(self, other)
-        elif isinstance(other, str): return AddNode(self, VariableNode(other))
+        elif isinstance(other, str): return AddNode(self, parser.Parser.parse(other))
         else: return AddNode(self, LiteralNode(other))
-    def __radd__(self, other: str | complex) -> AddNode:
-        if isinstance(other, str): return AddNode(VariableNode(other), self)
+    def __radd__(self, other: str | complex | None) -> Node:
+        if other is None: return self
+        if isinstance(other, str): return AddNode(parser.Parser.parse(other), self)
         else: return AddNode(LiteralNode(other), self)
-    def __sub__(self, other: Node | complex) -> SubNode:
+    def __sub__(self, other: Node | str | complex | None) -> Node:
+        if other is None: return self
         if isinstance(other, Node): return SubNode(self, other)
-        elif isinstance(other, str): return SubNode(self, VariableNode(other))
+        elif isinstance(other, str): return SubNode(self, parser.Parser.parse(other))
         else: return SubNode(self, LiteralNode(other))
-    def __rsub__(self, other: str | complex) -> SubNode:
-        if isinstance(other, str): return SubNode(VariableNode(other), self)
+    def __rsub__(self, other: str | complex | None) -> Node:
+        if other is None: return -self
+        if isinstance(other, str): return SubNode(parser.Parser.parse(other), self)
         else: return SubNode(LiteralNode(other), self)
-    def __mul__(self, other: Node | complex) -> MulNode:
+    def __mul__(self, other: Node | str | complex) -> MulNode:
         if isinstance(other, Node): return MulNode(self, other)
-        elif isinstance(other, str): return MulNode(self, VariableNode(other))
+        elif isinstance(other, str): return MulNode(self, parser.Parser.parse(other))
         else: return MulNode(self, LiteralNode(other))
     def __rmul__(self, other: str | complex) -> MulNode:
-        if isinstance(other, str): return MulNode(VariableNode(other), self)
+        if isinstance(other, str): return MulNode(parser.Parser.parse(other), self)
         else: return MulNode(LiteralNode(other), self)
-    def __truediv__(self, other: Node | complex) -> DivNode:
+    def __truediv__(self, other: Node | str | complex) -> DivNode:
         if isinstance(other, Node): return DivNode(self, other)
-        elif isinstance(other, str): return DivNode(self, VariableNode(other))
+        elif isinstance(other, str): return DivNode(self, parser.Parser.parse(other))
         else: return DivNode(self, LiteralNode(other))
     def __rtruediv__(self, other: str | complex) -> DivNode:
-        if isinstance(other, str): return DivNode(VariableNode(other), self)
+        if isinstance(other, str): return DivNode(parser.Parser.parse(other), self)
         else: return DivNode(LiteralNode(other), self)
-    def __pow__(self, other: Node | complex) -> PowNode:
+    def __pow__(self, other: Node | str | complex) -> PowNode:
         if isinstance(other, Node): return PowNode(self, other)
-        elif isinstance(other, str): return PowNode(self, VariableNode(other))
+        elif isinstance(other, str): return PowNode(self, parser.Parser.parse(other))
         else: return PowNode(self, LiteralNode(other))
     def __rpow__(self, other: str | complex) -> PowNode:
-        if isinstance(other, str): return PowNode(VariableNode(other), self)
+        if isinstance(other, str): return PowNode(parser.Parser.parse(other), self)
         else: return PowNode(LiteralNode(other), self)
 
 class LiteralNode(Node):
@@ -267,6 +277,12 @@ class FunctionCallNode(Node):
         for i, arg in enumerate(nc.arguments):
             nc.arguments[i] = arg.substitute(self.__class__, var, expr)
         return nc
+    
+    def expand(self: T) -> T:
+        nc = super().expand()
+        for i, arg in enumerate(nc.arguments):
+            nc.arguments[i] = arg.expand()
+        return nc
 
     def __repr__(self) -> str:
         return f"Ftn[{self.identifier}]{self.arguments.__repr__()}"
@@ -302,6 +318,11 @@ class UnaryNode(Node, ABC):
         if self == var: return expr
         nc = super().substitute(var, expr)
         nc.arg = self.arg.substitute(var, expr)
+        return nc
+    
+    def expand(self) -> UnaryNode:
+        nc = super().expand()
+        nc.arg = self.arg.expand()
         return nc
     
     def __hash__(self) -> int:
@@ -382,10 +403,10 @@ class BinaryNode(Node, ABC):
     def evaluate(self, context: Context = None, **consts: dict[str, complex]) -> complex:
         return self.op(self.left.evaluate(context, **consts), self.right.evaluate(context, **consts))
 
-    def simplify(self: T, callerType: type = object) -> T:
+    def simplify(self, callerType: type = object) -> BinaryNode:
         nc = super().simplify(callerType)
-        nc.left = nc.left.simplify(self.__class__)
-        nc.right = nc.right.simplify(self.__class__)
+        nc.left = self.left.simplify(self.__class__)
+        nc.right = self.right.simplify(self.__class__)
         return nc
     
     def substitute(self, var: str | Node, expr: str | Node) -> Node:
@@ -395,6 +416,12 @@ class BinaryNode(Node, ABC):
         nc = super().substitute(var, expr)
         nc.left = self.left.substitute(var, expr)
         nc.right = self.right.substitute(var, expr)
+        return nc
+    
+    def expand(self) -> BinaryNode:
+        nc = super().expand()
+        nc.left = self.left.expand()
+        nc.right = self.right.expand()
         return nc
     
     def __hash__(self) -> int:
@@ -564,6 +591,20 @@ class MulNode(MulDivNode):
             return NegNode(DivNode(nc.left.right, nc.right))
         else:
             return nc
+    
+    def expand(self) -> BinaryNode:
+        nc = super().expand()
+        result: BinaryNode = None
+        left = sumprod_terms(nc.left) if isinstance(nc.left, AddSubNode) else ((nc.left, False),)
+        right = tuple(sumprod_terms(nc.right)) if isinstance(nc.right, AddSubNode) else ((nc.right, False),)
+        for lt, lneg in left:
+            for rt, rneg in right:
+                term = lt * rt
+                neg = lneg ^ rneg
+                if neg: result -= term
+                else: result += term
+        return result
+
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} * {self.right.__repr__()})"

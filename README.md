@@ -24,8 +24,8 @@ x = 1
 # we could simplify the ratio, however the algorithm isn't yet smart enough to know how to manipulate fractions.
 ratio = expr / derivative
 for i in range(5):
-  x = x - ratio.evaluate(x=x)
-  print(x)
+    x = x - ratio.evaluate(x=x)
+    print(x)
 
 # but what if our variable x respresented something a bit more complicated?
 # well we can substitute it with another expression
