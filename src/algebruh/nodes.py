@@ -122,6 +122,11 @@ class Node(ABC):
         makes use of the distrubitive law to expand expressions into a more manipulatable form.
         '''
         return copy(self)
+    @abstractmethod
+    def tex(self) -> str:
+        '''
+        produces a TeX string representing this expression.
+        '''
     
     def __hash__(self) -> int:
         return hash(self.__repr__())
@@ -185,6 +190,9 @@ class LiteralNode(Node):
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         return LiteralNode(0)
+    
+    def tex(self) -> str:
+        return str(self.value).replace("j", "i")
 
     def __repr__(self) -> str:
         return f"Lit{self.value}"
@@ -219,6 +227,12 @@ class VariableNode(Node):
         if isinstance(var, str): var = parser.Parser.parse(var)
         if isinstance(expr, str): expr = parser.Parser.parse(expr)
         return expr if self == var else super().substitute(var, expr)
+    
+    def tex(self) -> str:
+        if len(self.identifier) == 1:
+            return self.identifier
+        else:
+            return f"\\text{{{self.identifier}}}"
 
     def __repr__(self) -> str:
         return f"Var({self.identifier})"
@@ -283,6 +297,12 @@ class FunctionCallNode(Node):
         for i, arg in enumerate(nc.arguments):
             nc.arguments[i] = arg.expand()
         return nc
+    
+    def tex(self) -> str:
+        if len(self.arguments) == 1:
+            return f"\\{self.identifier}{{{self.arguments[0].tex()}}}"
+        else:
+            return f"\\{self.identifier}{{\\left({(arg.tex() + ',' for arg in self.arguments)[:-1]}\\right)}}"
 
     def __repr__(self) -> str:
         return f"Ftn[{self.identifier}]{self.arguments.__repr__()}"
@@ -345,6 +365,9 @@ class PosNode(UnaryNode):
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
         return nc.arg
+    
+    def tex(self) -> str:
+        return f"+{self.arg.tex()}"
 
     def __repr__(self) -> str:
         return f"+{self.arg.__repr__()}"
@@ -374,6 +397,9 @@ class NegNode(UnaryNode):
             return LiteralNode(-nc.arg.value)
         else:
             return nc
+    
+    def tex(self) -> str:
+        return f"-{self.arg.tex()}"
 
     def __repr__(self) -> str:
         return f"-{self.arg.__repr__()}"
@@ -489,6 +515,13 @@ class AddNode(AddSubNode):
             return SubNode(nc.left, nc.right.arg)
         else:
             return nc
+    
+    def tex(self) -> str:
+        if isinstance(self.left, AddSubNode | MulNode): l = self.left.tex()[:-7] # \right)
+        else: l = f"\\left({self.left.tex()}"
+        if isinstance(self.right, AddSubNode | MulNode): r = self.right.tex()[6:] # \left(
+        else: r = f"{self.right.tex()}\\right)"
+        return f"{l}+{r}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} + {self.right.__repr__()})"
@@ -519,6 +552,13 @@ class SubNode(AddSubNode):
             return SubNode(nc.left, nc.right.arg)
         else:
             return nc
+    
+    def tex(self) -> str:
+        if isinstance(self.left, AddSubNode | MulNode): l = self.left.tex()[:-7] # \right)
+        else: l = f"\\left({self.left.tex()}"
+        if isinstance(self.right, MulNode): r = self.right.tex()[6:] # \left(
+        else: r = f"{self.right.tex()}\\right)"
+        return f"{l}-{r}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} - {self.right.__repr__()})"
@@ -604,7 +644,13 @@ class MulNode(MulDivNode):
                 if neg: result -= term
                 else: result += term
         return result
-
+    
+    def tex(self) -> str:
+        if isinstance(self.left, MulNode): l = self.left.tex()[:-7] # \right)
+        else: l = f"\\left({self.left.tex()}"
+        if isinstance(self.right, MulNode): r = self.right.tex()[6:] # \left(
+        else: r = f"{self.right.tex()}\\right)"
+        return f"{l}\\times {r}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} * {self.right.__repr__()})"
@@ -642,6 +688,13 @@ class DivNode(MulDivNode):
             return nc.left
         else:
             return nc
+    
+    def tex(self) -> str:
+        if isinstance(self.left, AddSubNode | MulNode): l = self.left.tex()[6:-7]
+        else: l = self.left.tex()
+        if isinstance(self.right, AddSubNode | MulNode): r = self.right.tex()[6:-7]
+        else: r = self.right.tex()
+        return f"\\frac{{{l}}}{{{r}}}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} / {self.right.__repr__()})"
@@ -694,6 +747,12 @@ class PowNode(BinaryNode):
             return PowNode(nc.left.left, MulNode(nc.left.right, nc.right))
         else:
             return nc
+
+    def tex(self) -> str:
+        l = self.left.tex()
+        if isinstance(self.right, AddSubNode | MulNode): r = self.right.tex()[6:-7]
+        else: r = self.right.tex()
+        return f"{l}^{r}" if len(r) == 1 else f"{l}^{{{r}}}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} ** {self.right.__repr__()})"
