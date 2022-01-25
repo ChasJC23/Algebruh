@@ -302,7 +302,7 @@ class FunctionCallNode(Node):
         if len(self.arguments) == 1:
             return f"\\{self.identifier}{{{self.arguments[0].tex()}}}"
         else:
-            return f"\\{self.identifier}{{\\left({(arg.tex() + ',' for arg in self.arguments)[:-1]}\\right)}}"
+            return f"\\{self.identifier}{{\\left({','.join(arg.tex() for arg in self.arguments)}\\right)}}"
 
     def __repr__(self) -> str:
         return f"Ftn[{self.identifier}]{self.arguments.__repr__()}"

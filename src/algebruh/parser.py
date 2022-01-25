@@ -73,7 +73,7 @@ class Parser:
                     self.tokeniser.nextToken()
                     arguments.append(self.parseAddSub())
                     if self.tokeniser.currentToken == Token.SEPARATOR:
-                        self.tokeniser.nextToken()
+                        continue
                     elif self.tokeniser.currentToken == Token.RPARENS:
                         self.tokeniser.nextToken()
                         return FunctionCallNode(identifier, *arguments)
