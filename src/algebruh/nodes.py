@@ -1,12 +1,16 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Generator, Callable, TypeVar, TYPE_CHECKING
 from copy import copy
+from typing import TYPE_CHECKING, Callable, Generator, TypeVar
+
 from . import parser
+
 if TYPE_CHECKING:
     from .context import Context
 
 T = TypeVar('T')
+
 
 def walk(tree: Node) -> Generator[Node, None, None]:
     '''
@@ -27,13 +31,16 @@ def walk(tree: Node) -> Generator[Node, None, None]:
                     yield i
     yield tree
 
+
 def sumprod_terms(tree: AddSubNode | MulDivNode) -> Generator[tuple[Node, bool], None, None]:
     '''
     yields the terms within the sum or product as determined by the given tree,
     alongside a boolean value indicating if each are negated / inversed.
     '''
-    root_type = AddSubNode if isinstance(tree, AddSubNode) else MulDivNode if isinstance(tree, MulDivNode) else None
-    if root_type == None: raise TypeError()
+    root_type = AddSubNode if isinstance(
+        tree, AddSubNode) else MulDivNode if isinstance(tree, MulDivNode) else None
+    if root_type is None:
+        raise TypeError()
     if isinstance(tree.left, root_type):
         for term, neg in sumprod_terms(tree.left):
             yield term, neg ^ tree.left_negated
@@ -45,11 +52,12 @@ def sumprod_terms(tree: AddSubNode | MulDivNode) -> Generator[tuple[Node, bool],
     else:
         yield tree.right, tree.right_negated
 
+
 def sumFromDict(d: dict[Node, complex], literal: complex = 0):
     '''
     returns a sum of all keys in the dictionary, where their coefficient is their linked value in the dictionary.
     '''
-    dc = copy(d)
+    dc: dict[Node, complex] = copy(d)
     expr = LiteralNode(0)
     while expr == LiteralNode(0) and dc != {}:
         key, value = dc.popitem()
@@ -66,11 +74,13 @@ def sumFromDict(d: dict[Node, complex], literal: complex = 0):
             expr = AddNode(expr, LiteralNode(literal))
     return expr
 
+
 def productFromDict(d: dict[Node, Node], literal: complex = 1):
     '''
     returns a product of all keys in the dictionary, where their exponent is their linked value in the dictionary.
     '''
-    if literal == 0: return LiteralNode(0)
+    if literal == 0:
+        return LiteralNode(0)
     dc = copy(d)
     expr = LiteralNode(1)
     while expr == LiteralNode(1) and dc != {}:
@@ -89,6 +99,7 @@ def productFromDict(d: dict[Node, Node], literal: complex = 1):
         else:
             expr = MulNode(LiteralNode(literal), expr)
     return expr
+
 
 class Node(ABC):
     '''
@@ -110,78 +121,121 @@ class Node(ABC):
         returns a new node which includes less redundant operations.
         '''
         return copy(self)
-        
+
     def substitute(self: T, var: str | Node, expr: str | Node) -> T:
         '''
         substitutes all instances of a variable or expression with a new expression.
         '''
         return copy(self)
-    
+
     def expand(self: T) -> T:
         '''
         makes use of the distrubitive law to expand expressions into a more manipulatable form.
         '''
         return copy(self)
+
     @abstractmethod
     def tex(self) -> str:
         '''
         produces a TeX string representing this expression.
         '''
-    
+
     def __hash__(self) -> int:
         return hash(self.__repr__())
-    
+
     def __eq__(self, __o: object) -> bool:
         return isinstance(__o, self.__class__)
-    
+
     def __pos__(self) -> PosNode:
         return PosNode(self)
+
     def __neg__(self) -> NegNode:
         return NegNode(self)
+
     def __add__(self, other: Node | str | complex | None) -> Node:
-        if other is None: return self
-        if isinstance(other, Node): return AddNode(self, other)
-        elif isinstance(other, str): return AddNode(self, parser.Parser.parse(other))
-        else: return AddNode(self, LiteralNode(other))
+        if other is None:
+            return self
+        if isinstance(other, Node):
+            return AddNode(self, other)
+        elif isinstance(other, str):
+            return AddNode(self, parser.Parser.parse(other))
+        else:
+            return AddNode(self, LiteralNode(other))
+
     def __radd__(self, other: str | complex | None) -> Node:
-        if other is None: return self
-        if isinstance(other, str): return AddNode(parser.Parser.parse(other), self)
-        else: return AddNode(LiteralNode(other), self)
+        if other is None:
+            return self
+        if isinstance(other, str):
+            return AddNode(parser.Parser.parse(other), self)
+        else:
+            return AddNode(LiteralNode(other), self)
+
     def __sub__(self, other: Node | str | complex | None) -> Node:
-        if other is None: return self
-        if isinstance(other, Node): return SubNode(self, other)
-        elif isinstance(other, str): return SubNode(self, parser.Parser.parse(other))
-        else: return SubNode(self, LiteralNode(other))
+        if other is None:
+            return self
+        if isinstance(other, Node):
+            return SubNode(self, other)
+        elif isinstance(other, str):
+            return SubNode(self, parser.Parser.parse(other))
+        else:
+            return SubNode(self, LiteralNode(other))
+
     def __rsub__(self, other: str | complex | None) -> Node:
-        if other is None: return -self
-        if isinstance(other, str): return SubNode(parser.Parser.parse(other), self)
-        else: return SubNode(LiteralNode(other), self)
+        if other is None:
+            return -self
+        if isinstance(other, str):
+            return SubNode(parser.Parser.parse(other), self)
+        else:
+            return SubNode(LiteralNode(other), self)
+
     def __mul__(self, other: Node | str | complex) -> MulNode:
-        if isinstance(other, Node): return MulNode(self, other)
-        elif isinstance(other, str): return MulNode(self, parser.Parser.parse(other))
-        else: return MulNode(self, LiteralNode(other))
+        if isinstance(other, Node):
+            return MulNode(self, other)
+        elif isinstance(other, str):
+            return MulNode(self, parser.Parser.parse(other))
+        else:
+            return MulNode(self, LiteralNode(other))
+
     def __rmul__(self, other: str | complex) -> MulNode:
-        if isinstance(other, str): return MulNode(parser.Parser.parse(other), self)
-        else: return MulNode(LiteralNode(other), self)
+        if isinstance(other, str):
+            return MulNode(parser.Parser.parse(other), self)
+        else:
+            return MulNode(LiteralNode(other), self)
+
     def __truediv__(self, other: Node | str | complex) -> DivNode:
-        if isinstance(other, Node): return DivNode(self, other)
-        elif isinstance(other, str): return DivNode(self, parser.Parser.parse(other))
-        else: return DivNode(self, LiteralNode(other))
+        if isinstance(other, Node):
+            return DivNode(self, other)
+        elif isinstance(other, str):
+            return DivNode(self, parser.Parser.parse(other))
+        else:
+            return DivNode(self, LiteralNode(other))
+
     def __rtruediv__(self, other: str | complex) -> DivNode:
-        if isinstance(other, str): return DivNode(parser.Parser.parse(other), self)
-        else: return DivNode(LiteralNode(other), self)
+        if isinstance(other, str):
+            return DivNode(parser.Parser.parse(other), self)
+        else:
+            return DivNode(LiteralNode(other), self)
+
     def __pow__(self, other: Node | str | complex) -> PowNode:
-        if isinstance(other, Node): return PowNode(self, other)
-        elif isinstance(other, str): return PowNode(self, parser.Parser.parse(other))
-        else: return PowNode(self, LiteralNode(other))
+        if isinstance(other, Node):
+            return PowNode(self, other)
+        elif isinstance(other, str):
+            return PowNode(self, parser.Parser.parse(other))
+        else:
+            return PowNode(self, LiteralNode(other))
+
     def __rpow__(self, other: str | complex) -> PowNode:
-        if isinstance(other, str): return PowNode(parser.Parser.parse(other), self)
-        else: return PowNode(LiteralNode(other), self)
+        if isinstance(other, str):
+            return PowNode(parser.Parser.parse(other), self)
+        else:
+            return PowNode(LiteralNode(other), self)
+
 
 class LiteralNode(Node):
     '''
     expression element representing a literal value.
     '''
+
     def __init__(self, value: complex):
         self.value = value
 
@@ -190,26 +244,28 @@ class LiteralNode(Node):
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         return LiteralNode(0)
-    
+
     def tex(self) -> str:
         return str(self.value).replace("j", "i")
 
     def __repr__(self) -> str:
-        return f"Lit{self.value}"
-    
+        return f"Literal[{self.value}]"
+
     def __str__(self) -> str:
         return str(self.value)
-    
+
     def __hash__(self) -> int:
         return super().__hash__()
-    
+
     def __eq__(self, __o: LiteralNode) -> bool:
         return super().__eq__(__o) and self.value == __o.value
+
 
 class VariableNode(Node):
     '''
     expression element representing an unknown variable in an expression.
     '''
+
     def __init__(self, identifier: str):
         self.identifier = identifier
 
@@ -220,14 +276,18 @@ class VariableNode(Node):
         return context.resolveVariable(self.identifier)
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
-        if var == self.identifier: return LiteralNode(1)
-        else: return LiteralNode(0)
-    
+        if var == self.identifier:
+            return LiteralNode(1)
+        else:
+            return LiteralNode(0)
+
     def substitute(self, var: str | Node, expr: str | Node) -> Node:
-        if isinstance(var, str): var = parser.Parser.parse(var)
-        if isinstance(expr, str): expr = parser.Parser.parse(expr)
+        if isinstance(var, str):
+            var = parser.Parser.parse(var)
+        if isinstance(expr, str):
+            expr = parser.Parser.parse(expr)
         return expr if self == var else super().substitute(var, expr)
-    
+
     def tex(self) -> str:
         if len(self.identifier) == 1:
             return self.identifier
@@ -236,23 +296,25 @@ class VariableNode(Node):
 
     def __repr__(self) -> str:
         return f"Var({self.identifier})"
-    
+
     def __str__(self) -> str:
         # redundant operation considering the type of the identifier should be string,
         # but it resolves to another __str__ call so ¯\_(ツ)_/¯
         return str(self.identifier)
-    
+
     def __hash__(self) -> int:
         return super().__hash__()
-    
+
     def __eq__(self, __o: VariableNode) -> bool:
         return super().__eq__(__o) and self.identifier == __o.identifier
+
 
 class FunctionCallNode(Node):
     '''
     expression element representing a call to a specific function.
     The function may be multi-valued.
     '''
+
     def __init__(self, identifier: str, *arguments: Node):
         self.identifier = identifier
         self.arguments = list(arguments)
@@ -273,8 +335,10 @@ class FunctionCallNode(Node):
             argDeriv = self.arguments[i].differentiate(var, context)
             fprime = fprimes[i]
             term = MulNode(fprime, argDeriv)
-            if result is None: result = term
-            else: result = AddNode(result, term)
+            if result is None:
+                result = term
+            else:
+                result = AddNode(result, term)
         return result or LiteralNode(0)
 
     def simplify(self: T, callerType: type = object) -> T:
@@ -282,22 +346,25 @@ class FunctionCallNode(Node):
         for i, arg in enumerate(nc.arguments):
             nc.arguments[i] = arg.simplify(self.__class__)
         return nc
-    
+
     def substitute(self, var: str | Node, expr: str | Node) -> Node:
-        if isinstance(var, str): var = parser.Parser.parse(var)
-        if isinstance(expr, str): expr = parser.Parser.parse(expr)
-        if self == var: return expr
+        if isinstance(var, str):
+            var = parser.Parser.parse(var)
+        if isinstance(expr, str):
+            expr = parser.Parser.parse(expr)
+        if self == var:
+            return expr
         nc = super().substitute(var, expr)
         for i, arg in enumerate(nc.arguments):
             nc.arguments[i] = arg.substitute(self.__class__, var, expr)
         return nc
-    
+
     def expand(self: T) -> T:
         nc = super().expand()
         for i, arg in enumerate(nc.arguments):
             nc.arguments[i] = arg.expand()
         return nc
-    
+
     def tex(self) -> str:
         if len(self.arguments) == 1:
             return f"\\{self.identifier}{{{self.arguments[0].tex()}}}"
@@ -306,20 +373,22 @@ class FunctionCallNode(Node):
 
     def __repr__(self) -> str:
         return f"Ftn[{self.identifier}]{self.arguments.__repr__()}"
-    
+
     def __str__(self) -> str:
         return self.identifier + (f'({self.arguments[0]})' if len(self.arguments) == 1 else str(self.arguments))
-    
+
     def __hash__(self) -> int:
         return super().__hash__()
-    
+
     def __eq__(self, __o: FunctionCallNode) -> bool:
         return super().__eq__(__o) and self.identifier == __o.identifier and all(self.arguments[i] == __o.arguments[i] for i in range(len(self.arguments)))
+
 
 class UnaryNode(Node, ABC):
     '''
     expression element corresponding to any unary operator.
     '''
+
     def __init__(self, op: Callable[[complex], complex], arg: Node):
         self.op = op
         self.arg = arg
@@ -331,32 +400,37 @@ class UnaryNode(Node, ABC):
         nc = super().simplify(callerType)
         nc.arg = self.arg.simplify(self.__class__)
         return nc
-    
+
     def substitute(self, var: str | Node, expr: str | Node) -> Node:
-        if isinstance(var, str): var = parser.Parser.parse(var)
-        if isinstance(expr, str): expr = parser.Parser.parse(expr)
-        if self == var: return expr
+        if isinstance(var, str):
+            var = parser.Parser.parse(var)
+        if isinstance(expr, str):
+            expr = parser.Parser.parse(expr)
+        if self == var:
+            return expr
         nc = super().substitute(var, expr)
         nc.arg = self.arg.substitute(var, expr)
         return nc
-    
+
     def expand(self) -> UnaryNode:
         nc = super().expand()
         nc.arg = self.arg.expand()
         return nc
-    
+
     def __hash__(self) -> int:
         return super().__hash__()
 
     def __eq__(self, __o: UnaryNode) -> bool:
         return super().__eq__(__o) and self.arg == __o.arg
 
+
 class PosNode(UnaryNode):
     '''
     expression element representing the `+a` prefix unary operator.
     '''
+
     def __init__(self, arg: Node):
-        op = lambda x: +x
+        def op(x): return +x
         super().__init__(op, arg)
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
@@ -365,7 +439,7 @@ class PosNode(UnaryNode):
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
         return nc.arg
-    
+
     def tex(self) -> str:
         return f"+{self.arg.tex()}"
 
@@ -378,12 +452,14 @@ class PosNode(UnaryNode):
     def __hash__(self) -> int:
         return super().__hash__()
 
+
 class NegNode(UnaryNode):
     '''
     expression element representing the `-a` prefix unary operator.
     '''
+
     def __init__(self, arg: Node):
-        op = lambda x: -x
+        def op(x): return -x
         super().__init__(op, arg)
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
@@ -397,7 +473,7 @@ class NegNode(UnaryNode):
             return LiteralNode(-nc.arg.value)
         else:
             return nc
-    
+
     def tex(self) -> str:
         return f"-{self.arg.tex()}"
 
@@ -410,18 +486,22 @@ class NegNode(UnaryNode):
     def __hash__(self) -> int:
         return super().__hash__()
 
+
 class BinaryNode(Node, ABC):
     '''
     expression element corresponding to any binary operator.
     '''
+
     def __init__(self, op: Callable[[complex, complex], complex], left: Node, right: Node, negations: int):
         self.op = op
         self.left = left
         self.right = right
         self.negations = negations
+
     @property
     def left_negated(self) -> bool:
         return bool(self.negations & 0b10)
+
     @property
     def right_negated(self) -> bool:
         return bool(self.negations & 0b01)
@@ -434,35 +514,41 @@ class BinaryNode(Node, ABC):
         nc.left = self.left.simplify(self.__class__)
         nc.right = self.right.simplify(self.__class__)
         return nc
-    
+
     def substitute(self, var: str | Node, expr: str | Node) -> Node:
-        if isinstance(var, str): var = parser.Parser.parse(var)
-        if isinstance(expr, str): expr = parser.Parser.parse(expr)
-        if self == var: return expr
+        if isinstance(var, str):
+            var = parser.Parser.parse(var)
+        if isinstance(expr, str):
+            expr = parser.Parser.parse(expr)
+        if self == var:
+            return expr
         nc = super().substitute(var, expr)
         nc.left = self.left.substitute(var, expr)
         nc.right = self.right.substitute(var, expr)
         return nc
-    
+
     def expand(self) -> BinaryNode:
         nc = super().expand()
         nc.left = self.left.expand()
         nc.right = self.right.expand()
         return nc
-    
+
     def __hash__(self) -> int:
         return super().__hash__()
 
     def __eq__(self, __o: BinaryNode) -> bool:
         return super().__eq__(__o) and (self.left == __o.left and self.right == __o.right or self.left == __o.right and self.right == __o.left)
 
+
 class AddSubNode(BinaryNode, ABC):
     '''
     expression element representing either binary addition or subtraction. 
     '''
+
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
-        if issubclass(callerType, AddSubNode) and isinstance(nc, AddSubNode): return nc
+        if issubclass(callerType, AddSubNode) and isinstance(nc, AddSubNode):
+            return nc
         literalAmount = 0
         variableAmount: dict[Node, complex] = {}
         for term, negated in sumprod_terms(nc):
@@ -473,14 +559,18 @@ class AddSubNode(BinaryNode, ABC):
             match term:
                 case MulNode():
                     if isinstance(term.left, LiteralNode):
-                        quantity = term.left.value; term = term.right
+                        quantity = term.left.value
+                        term = term.right
                     elif isinstance(term.right, LiteralNode):
-                        quantity = term.right.value; term = term.left
+                        quantity = term.right.value
+                        term = term.left
                 case DivNode():
                     if isinstance(term.left, LiteralNode):
-                        quantity = term.left.value; term = term.right
+                        quantity = term.left.value
+                        term = term.right
                     elif isinstance(term.right, LiteralNode):
-                        quantity = 1/term.right.value; term = term.left
+                        quantity = 1/term.right.value
+                        term = term.left
             if term in variableAmount.keys():
                 variableAmount[term] += -quantity if negated else quantity
             else:
@@ -493,17 +583,20 @@ class AddSubNode(BinaryNode, ABC):
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         return self.__class__(self.left.differentiate(var, context, **consts), self.right.differentiate(var, context, **consts))
 
+
 class AddNode(AddSubNode):
     '''
     expression element representing the binary addition operator. 
     '''
+
     def __init__(self, left: Node, right: Node):
-        op = lambda x, y: x + y
+        def op(x, y): return x + y
         super().__init__(op, left, right, 0b00)
 
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
-        if not isinstance(nc, self.__class__): return nc
+        if not isinstance(nc, self.__class__):
+            return nc
         # 0 + x = x
         elif isinstance(nc.left, LiteralNode) and nc.left.value == 0:
             return nc.right
@@ -515,35 +608,46 @@ class AddNode(AddSubNode):
             return SubNode(nc.left, nc.right.arg)
         else:
             return nc
-    
+
     def tex(self) -> str:
-        if isinstance(self.left, AddSubNode | MulNode): l = self.left.tex()[:-7] # \right)
-        else: l = f"\\left({self.left.tex()}"
-        if isinstance(self.right, AddSubNode | MulNode): r = self.right.tex()[6:] # \left(
-        else: r = f"{self.right.tex()}\\right)"
+        if isinstance(self.left, AddSubNode | MulNode):
+            l = self.left.tex()[:-7]  # \right)
+        else:
+            l = f"\\left({self.left.tex()}"
+        if isinstance(self.right, AddSubNode | MulNode):
+            r = self.right.tex()[6:]  # \left(
+        else:
+            r = f"{self.right.tex()}\\right)"
         return f"{l}+{r}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} + {self.right.__repr__()})"
-    
+
     def __str__(self) -> str:
-        if isinstance(self.left, AddSubNode | MulDivNode | PowNode): l = str(self.left)[:-1]
-        else: l = f"({self.left}"
-        if isinstance(self.right, AddSubNode | MulDivNode | PowNode): r = str(self.right)[1:]
-        else: r = f"{self.right})"
+        if isinstance(self.left, AddSubNode | MulDivNode | PowNode):
+            l = str(self.left)[:-1]
+        else:
+            l = f"({self.left}"
+        if isinstance(self.right, AddSubNode | MulDivNode | PowNode):
+            r = str(self.right)[1:]
+        else:
+            r = f"{self.right})"
         return f"{l} + {r}"
+
 
 class SubNode(AddSubNode):
     '''
     expression element representing the binary subtraction operator. 
     '''
+
     def __init__(self, left: Node, right: Node):
-        op = lambda x, y: x - y
+        def op(x, y): return x - y
         super().__init__(op, left, right, 0b01)
 
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
-        if not isinstance(nc, self.__class__): return nc
+        if not isinstance(nc, self.__class__):
+            return nc
         elif isinstance(nc.left, LiteralNode) and nc.left.value == 0:
             return NegNode(nc.right)
         elif isinstance(nc.right, LiteralNode) and nc.right.value == 0:
@@ -552,31 +656,42 @@ class SubNode(AddSubNode):
             return SubNode(nc.left, nc.right.arg)
         else:
             return nc
-    
+
     def tex(self) -> str:
-        if isinstance(self.left, AddSubNode | MulNode): l = self.left.tex()[:-7] # \right)
-        else: l = f"\\left({self.left.tex()}"
-        if isinstance(self.right, MulNode): r = self.right.tex()[6:] # \left(
-        else: r = f"{self.right.tex()}\\right)"
+        if isinstance(self.left, AddSubNode | MulNode):
+            l = self.left.tex()[:-7]  # \right)
+        else:
+            l = f"\\left({self.left.tex()}"
+        if isinstance(self.right, MulNode):
+            r = self.right.tex()[6:]  # \left(
+        else:
+            r = f"{self.right.tex()}\\right)"
         return f"{l}-{r}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} - {self.right.__repr__()})"
-    
+
     def __str__(self) -> str:
-        if isinstance(self.left, AddSubNode | MulDivNode | PowNode): l = str(self.left)[:-1]
-        else: l = f"({self.left}"
-        if isinstance(self.right, MulDivNode | PowNode): r = str(self.right)[1:]
-        else: r = f"{self.right})"
+        if isinstance(self.left, AddSubNode | MulDivNode | PowNode):
+            l = str(self.left)[:-1]
+        else:
+            l = f"({self.left}"
+        if isinstance(self.right, MulDivNode | PowNode):
+            r = str(self.right)[1:]
+        else:
+            r = f"{self.right})"
         return f"{l} - {r}"
+
 
 class MulDivNode(BinaryNode, ABC):
     '''
     expression element representing either binary multiplication or division. 
     '''
+
     def simplify(self, callerType: type = object) -> BinaryNode:
         nc = super().simplify(callerType)
-        if issubclass(callerType, MulDivNode) and isinstance(nc, MulDivNode): return nc
+        if issubclass(callerType, MulDivNode) and isinstance(nc, MulDivNode):
+            return nc
         literalAmount = 1
         variableAmount: dict[Node, Node] = {}
         for term, inversed in sumprod_terms(nc):
@@ -595,24 +710,29 @@ class MulDivNode(BinaryNode, ABC):
         else:
             return productFromDict(variableAmount, literalAmount)
 
+
 class MulNode(MulDivNode):
     '''
     expression element representing the binary multiplication operator. 
     '''
+
     def __init__(self, left: Node, right: Node):
-        op = lambda x, y: x * y
+        def op(x, y): return x * y
         super().__init__(op, left, right, 0b00)
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         # product rule
         return AddNode(
-            MulNode(self.left, self.right.differentiate(var, context, **consts)),
-            MulNode(self.left.differentiate(var, context, **consts), self.right)
+            MulNode(self.left, self.right.differentiate(
+                var, context, **consts)),
+            MulNode(self.left.differentiate(
+                var, context, **consts), self.right)
         )
 
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
-        if not isinstance(nc, self.__class__): return nc
+        if not isinstance(nc, self.__class__):
+            return nc
         # 1 * x = x, x * 0 = 0
         elif isinstance(nc.left, LiteralNode) and nc.left.value == 1 or isinstance(nc.right, LiteralNode) and nc.right.value == 0:
             return nc.right
@@ -631,87 +751,114 @@ class MulNode(MulDivNode):
             return NegNode(DivNode(nc.left.right, nc.right))
         else:
             return nc
-    
+
     def expand(self) -> BinaryNode:
         nc = super().expand()
         result: BinaryNode = None
-        left = sumprod_terms(nc.left) if isinstance(nc.left, AddSubNode) else ((nc.left, False),)
-        right = tuple(sumprod_terms(nc.right)) if isinstance(nc.right, AddSubNode) else ((nc.right, False),)
+        left = sumprod_terms(nc.left) if isinstance(
+            nc.left, AddSubNode) else ((nc.left, False),)
+        right = tuple(sumprod_terms(nc.right)) if isinstance(
+            nc.right, AddSubNode) else ((nc.right, False),)
         for lt, lneg in left:
             for rt, rneg in right:
                 term = lt * rt
                 neg = lneg ^ rneg
-                if neg: result -= term
-                else: result += term
+                if neg:
+                    result -= term
+                else:
+                    result += term
         return result
-    
+
     def tex(self) -> str:
-        if isinstance(self.left, MulNode): l = self.left.tex()[:-7] # \right)
-        else: l = f"\\left({self.left.tex()}"
-        if isinstance(self.right, MulNode): r = self.right.tex()[6:] # \left(
-        else: r = f"{self.right.tex()}\\right)"
+        if isinstance(self.left, MulNode):
+            l = self.left.tex()[:-7]  # \right)
+        else:
+            l = f"\\left({self.left.tex()}"
+        if isinstance(self.right, MulNode):
+            r = self.right.tex()[6:]  # \left(
+        else:
+            r = f"{self.right.tex()}\\right)"
         return f"{l}\\times {r}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} * {self.right.__repr__()})"
-    
+
     def __str__(self) -> str:
-        if isinstance(self.left, MulDivNode | PowNode): l = str(self.left)[:-1]
-        else: l = f"({self.left}"
-        if isinstance(self.right, MulDivNode | PowNode): r = str(self.right)[1:]
-        else: r = f"{self.right})"
+        if isinstance(self.left, MulDivNode | PowNode):
+            l = str(self.left)[:-1]
+        else:
+            l = f"({self.left}"
+        if isinstance(self.right, MulDivNode | PowNode):
+            r = str(self.right)[1:]
+        else:
+            r = f"{self.right})"
         return f"{l} * {r}"
+
 
 class DivNode(MulDivNode):
     '''
     expression element representing the binary division operator. 
     '''
+
     def __init__(self, left: Node, right: Node):
-        op = lambda x, y: x / y
+        def op(x, y): return x / y
         super().__init__(op, left, right, 0b01)
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
         # quotient rule
         return DivNode(
             SubNode(
-                MulNode(self.left.differentiate(var, context, **consts), self.right),
-                MulNode(self.left, self.right.differentiate(var, context, **consts))
+                MulNode(self.left.differentiate(
+                    var, context, **consts), self.right),
+                MulNode(self.left, self.right.differentiate(
+                    var, context, **consts))
             ),
             MulNode(self.right, self.right)
         )
 
     def simplify(self, callerType: type = object) -> Node:
         nc = super().simplify(callerType)
-        if not isinstance(nc, self.__class__): return nc
+        if not isinstance(nc, self.__class__):
+            return nc
         # x / 1 = x, 0 / x = 0
         elif isinstance(nc.right, LiteralNode) and nc.right == 1 or isinstance(nc.left, LiteralNode) and nc.left == 0:
             return nc.left
         else:
             return nc
-    
+
     def tex(self) -> str:
-        if isinstance(self.left, AddSubNode | MulNode): l = self.left.tex()[6:-7]
-        else: l = self.left.tex()
-        if isinstance(self.right, AddSubNode | MulNode): r = self.right.tex()[6:-7]
-        else: r = self.right.tex()
+        if isinstance(self.left, AddSubNode | MulNode):
+            l = self.left.tex()[6:-7]
+        else:
+            l = self.left.tex()
+        if isinstance(self.right, AddSubNode | MulNode):
+            r = self.right.tex()[6:-7]
+        else:
+            r = self.right.tex()
         return f"\\frac{{{l}}}{{{r}}}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} / {self.right.__repr__()})"
-    
+
     def __str__(self) -> str:
-        if isinstance(self.left, MulDivNode | PowNode): l = str(self.left)[:-1]
-        else: l = f"({self.left}"
-        if isinstance(self.right, PowNode): r = str(self.right)[1:]
-        else: r = f"{self.right})"
+        if isinstance(self.left, MulDivNode | PowNode):
+            l = str(self.left)[:-1]
+        else:
+            l = f"({self.left}"
+        if isinstance(self.right, PowNode):
+            r = str(self.right)[1:]
+        else:
+            r = f"{self.right})"
         return f"{l} / {r}"
+
 
 class PowNode(BinaryNode):
     '''
     expression element representing the binary exponent operator. 
     '''
+
     def __init__(self, left: Node, right: Node):
-        op = lambda x, y: x ** y
+        def op(x, y): return x ** y
         super().__init__(op, left, right, 0b00)
 
     def differentiate(self, var: str, context: Context = None, **consts: dict[str, complex]) -> Node:
@@ -720,7 +867,8 @@ class PowNode(BinaryNode):
             PowNode(self.left, SubNode(self.right, LiteralNode(1))),
             AddNode(
                 # NOTE: I have no idea how commutativity plays into this, I'm just trusting Wolfram Alpha :)
-                MulNode(self.right, self.left.differentiate(var, context, **consts)),
+                MulNode(self.right, self.left.differentiate(
+                    var, context, **consts)),
                 MulNode(
                     MulNode(
                         self.left,
@@ -750,12 +898,14 @@ class PowNode(BinaryNode):
 
     def tex(self) -> str:
         l = self.left.tex()
-        if isinstance(self.right, AddSubNode | MulNode): r = self.right.tex()[6:-7]
-        else: r = self.right.tex()
+        if isinstance(self.right, AddSubNode | MulNode):
+            r = self.right.tex()[6:-7]
+        else:
+            r = self.right.tex()
         return f"{l}^{r}" if len(r) == 1 else f"{l}^{{{r}}}"
 
     def __repr__(self) -> str:
         return f"({self.left.__repr__()} ** {self.right.__repr__()})"
-    
+
     def __str__(self) -> str:
         return f"({self.left} ** {self.right})"

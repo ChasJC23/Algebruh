@@ -1,7 +1,9 @@
-from abc import ABC, abstractmethod
 import cmath
+from abc import ABC, abstractmethod
 from typing import Callable, Iterable
-from .nodes import Node, FunctionCallNode
+
+from .nodes import FunctionCallNode, Node
+
 
 class Context(ABC):
     '''
@@ -19,18 +21,21 @@ class Context(ABC):
         '''
         if function == "ln":
             return cmath.log
+
     @abstractmethod
     def differentiateFtn(self, function: str, *args: Node) -> Iterable[Node]:
         '''
         returns the derivative function(s) of the given function.
         '''
 
+
 class StdContext(Context):
     '''
     standard mathematical context.
     '''
+
     def __init__(self, **variables: complex):
-        self.variables = variables
+        self.variables: dict[str, complex] = variables
 
     def resolveVariable(self, variable: str) -> complex:
         if variable in self.variables.keys():
@@ -53,7 +58,7 @@ class StdContext(Context):
             case "sech": return lambda x: 1 / cmath.cosh(x)
             case "csch": return lambda x: 1 / cmath.sinh(x)
             case "coth": return lambda x: 1 / cmath.tanh(x)
-        raise SyntaxError()
+            case _: raise SyntaxError()
 
     def differentiateFtn(self, function: str, *args: Node) -> Iterable[Node]:
         match function:

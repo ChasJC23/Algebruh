@@ -1,6 +1,9 @@
 from enum import IntEnum
 from io import StringIO
-from string import whitespace as WHITESPACE, digits as DIGITS, ascii_letters as LETTERS
+from string import ascii_letters as LETTERS
+from string import digits as DIGITS
+from string import whitespace as WHITESPACE
+
 
 class Token(IntEnum):
     EOF = 0
@@ -15,10 +18,12 @@ class Token(IntEnum):
     IDENTIFIER = 9
     SEPARATOR = 10
 
+
 class Tokeniser:
     '''
     class responsible for tokenising a given mathematical expression ready to be parsed.
     '''
+
     def __init__(self, stream: StringIO):
         self.currentChar: str = None
         self.currentToken: Token = None
@@ -27,10 +32,10 @@ class Tokeniser:
         self.stream = stream
         self.nextChar()
         self.nextToken()
-    
+
     def nextChar(self):
         self.currentChar = self.stream.read(1)
-    
+
     def nextToken(self):
         while self.currentChar in WHITESPACE and self.currentChar != '':
             self.nextChar()
@@ -48,7 +53,8 @@ class Tokeniser:
                 if self.currentChar == '*':
                     self.currentToken = Token.POW
                     self.nextChar()
-                else: self.currentToken = Token.MUL
+                else:
+                    self.currentToken = Token.MUL
                 return
             case '/':
                 self.currentToken = Token.DIV
